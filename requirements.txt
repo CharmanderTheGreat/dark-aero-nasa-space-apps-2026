@@ -1,0 +1,5 @@
+# Python standard library is sufficient for core scripts.
+# Optional packages for extended GeoTIFF / SAR notebook analysis:
+numpy>=1.26.0
+pandas>=2.1.0
+requests>=2.31.0
