@@ -61,29 +61,38 @@
       center: [25.0, -20.0],
       zoom: 2,
       minZoom: 2,
+      maxZoom: 9,
       worldCopyJump: true
     });
 
-    // Dark Carto Base Layer (Fallback / Reference)
-    const darkBase = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      {
-        attribution: "&copy; OpenStreetMap & CartoDB",
-        maxZoom: 18
-      }
-    ).addTo(map);
-
-    // NASA Worldview GIBS - MODIS Terra True Color Layer
+    // Default Base Layer: NASA Worldview GIBS - MODIS Terra True Color
     const nasaTrueColor = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2025-07-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg",
       {
         attribution: "NASA Earthdata / Worldview GIBS (MODIS Terra)",
-        maxZoom: 9,
-        opacity: 0.85
+        maxZoom: 9
+      }
+    ).addTo(map);
+
+    // Secondary Base Layer: NASA Blue Marble Next Generation (Cloud-Free Global Mosaic)
+    const nasaBlueMarble = L.tileLayer(
+      "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+      {
+        attribution: "NASA Earthdata GIBS Blue Marble",
+        maxZoom: 8
       }
     );
 
-    // NASA Worldview GIBS - Land Surface Temperature Day Layer
+    // High-Zoom Terrain/Satellite Layer (Esri World Imagery - No API Key Required)
+    const esriSatellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+        maxZoom: 18
+      }
+    );
+
+    // Overlay: NASA Worldview GIBS - Land Surface Temperature Day Layer
     const nasaSurfaceTemp = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Land_Surface_Temp_Day/default/2025-07-15/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png",
       {
@@ -96,8 +105,9 @@
     L.control
       .layers(
         {
-          "Dark Aerospace Vector Map": darkBase,
-          "NASA Worldview True Color (MODIS)": nasaTrueColor
+          "NASA Worldview True Color (MODIS)": nasaTrueColor,
+          "NASA Blue Marble (Cloud-Free)": nasaBlueMarble,
+          "High-Res Satellite Imagery (Esri)": esriSatellite
         },
         {
           "NASA Land Surface Temperature Overlay": nasaSurfaceTemp
@@ -107,7 +117,6 @@
 
     markersLayer = L.layerGroup().addTo(map);
   }
-
   function populateTargetDropdown() {
     const select = document.getElementById("targetBaseSelect");
     select.innerHTML = "";
