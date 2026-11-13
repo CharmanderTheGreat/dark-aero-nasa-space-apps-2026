@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Aero | Planetary Analog Decision Support System (NASA Space Apps 2026)</title>
+  <title>Dark Aero v2.0 | Planetary Analog Decision Support System (NASA Space Apps 2026)</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Leaflet Map CSS -->
   <link
     rel="stylesheet"
@@ -11,104 +15,165 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
-  <!-- Custom Aerospace Dashboard Styles -->
+  <!-- Custom Aerospace Mission Control Styles -->
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
-  <!-- Top Navigation Header -->
+  <!-- Top Mission Control Navigation Bar -->
   <header class="top-nav">
     <div class="brand-group">
-      <span class="brand-badge">Dark Aero</span>
+      <span class="brand-badge">DARK AERO</span>
       <div class="brand-title">
-        <h1>Planetary Analog Decision Support System</h1>
-        <p>2026 NASA International Space Apps Challenge &bull; Moon &amp; Mars Analog Finder</p>
+        <h1>
+          Planetary Analog Decision Support System
+          <span class="version-tag">MISSION CONTROL v2.0</span>
+        </h1>
+        <p>2026 NASA International Space Apps Challenge &bull; Multi-Agency Moon &amp; Mars Analog Engine</p>
       </div>
     </div>
 
-    <div class="agency-pills">
-      <span class="agency-pill">NASA LRO Diviner &amp; Mini-RF</span>
-      <span class="agency-pill">NASA Worldview GIBS</span>
-      <span class="agency-pill">CSA RADARSAT-1 / RCM SAR</span>
-      <span class="agency-pill">ESA Copernicus</span>
-      <span class="agency-pill">JAXA G-Portal</span>
+    <div class="telemetry-status-bar">
+      <span class="status-pill"><span class="pulse-dot"></span>NASA GIBS WMTS &amp; Esri Orbital</span>
+      <span class="status-pill"><span class="pulse-dot amber"></span>NASA POWER Live API Scanner</span>
+      <span class="status-pill"><span class="pulse-dot"></span>CSA RADARSAT SAR &amp; LRO Diviner</span>
+      <span class="status-pill">ESA Copernicus &amp; JAXA G-Portal</span>
     </div>
 
-    <button id="exportJsonBtn" class="btn-export">Export Mission Report (JSON)</button>
+    <div class="nav-actions">
+      <button id="openMatrixModalBtn" class="btn-action">60-Pair Matrix</button>
+      <button id="exportCsvBtn" class="btn-action">Export CSV</button>
+      <button id="exportJsonBtn" class="btn-action primary">Export Mission Report (JSON)</button>
+    </div>
   </header>
 
   <!-- Main 3-Column Mission Control Grid -->
   <main class="dashboard-grid">
-    <!-- Left Column: Target Base Selection & Multi-Criteria Weighting -->
+    <!-- Left Column: 3D Planetary Globe, Target Base Selection & Mission Presets -->
     <section class="panel">
       <div class="panel-header">
-        <h2>1. Target Extraterrestrial Base</h2>
+        <h2>1. Extraterrestrial Target &amp; 3D Globe</h2>
+        <span style="font-size: 0.68rem; color: #94a3b8;">Drag globe to rotate</span>
+      </div>
+
+      <!-- Interactive 3D Planetary Target Globe -->
+      <div class="globe-widget">
+        <canvas id="planetaryGlobeCanvas" width="236" height="236"></canvas>
+        <div class="globe-telemetry">
+          <span id="globeBodyBadge" class="globe-body-badge moon">MOON ORBITAL TARGET</span>
+          <div class="globe-stat-row">
+            <span>Target Coords:</span>
+            <strong id="globeCoordText">-89.9°, 0.0°</strong>
+          </div>
+          <div class="globe-stat-row">
+            <span>Surface Gravity:</span>
+            <strong id="globeGravityText">1.62 m/s²</strong>
+          </div>
+          <div class="globe-stat-row">
+            <span>Solar Irradiance:</span>
+            <strong id="globeSolarText">1361 W/m²</strong>
+          </div>
+          <div style="font-size: 0.65rem; color: #38bdf8; margin-top: 0.15rem;">
+            ● Glowing Beacon = Active Landing Site
+          </div>
+        </div>
       </div>
 
       <div class="control-group">
-        <label for="targetBaseSelect">Select Moon or Mars Reference Base</label>
+        <label for="targetBaseSelect">Select Reference Moon or Mars Base</label>
         <select id="targetBaseSelect" class="select-input"></select>
       </div>
 
       <div id="targetSummaryBox" class="target-summary-card"></div>
 
-      <div class="panel-header" style="margin-top: 0.4rem;">
-        <h2>2. Analog Parameter Weights</h2>
-        <button id="resetWeightsBtn" class="btn-export" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Reset</button>
+      <div class="panel-header" style="margin-top: 0.15rem;">
+        <h2>2. Mission Priority Presets &amp; Weights</h2>
+        <button id="resetWeightsBtn" class="btn-action" style="padding: 0.2rem 0.5rem; font-size: 0.68rem;">Reset</button>
       </div>
 
-      <div class="control-group">
+      <div class="preset-grid">
+        <button class="preset-btn active" data-preset="balanced">Balanced Science</button>
+        <button class="preset-btn" data-preset="isru_ice">ISRU Ice Mining</button>
+        <button class="preset-btn" data-preset="rover_mobility">Rover Mobility</button>
+        <button class="preset-btn" data-preset="lava_habitat">Lava Tube Habitat</button>
+      </div>
+
+      <div class="control-group" style="margin-top: 0.2rem;">
         <div class="slider-row">
-          <label><span>Basalt &amp; Silicate Geology (PDS/ESA)</span><span id="val-geology">25%</span></label>
+          <label><span>Basalt &amp; Silicate Geology (PDS/ESA)</span><span id="val-geology" class="weight-val">25%</span></label>
           <input type="range" id="weight-geology" min="0" max="100" value="25" />
         </div>
 
         <div class="slider-row">
-          <label><span>SAR Radar Roughness (CSA RADARSAT / Mini-RF)</span><span id="val-roughness">20%</span></label>
+          <label><span>SAR Radar Roughness (CSA RADARSAT / Mini-RF)</span><span id="val-roughness" class="weight-val">20%</span></label>
           <input type="range" id="weight-roughness" min="0" max="100" value="20" />
         </div>
 
         <div class="slider-row">
-          <label><span>Topographic Slope Profile (LOLA/SRTM)</span><span id="val-slope">15%</span></label>
+          <label><span>Topographic Slope Profile (LOLA/SRTM)</span><span id="val-slope" class="weight-val">15%</span></label>
           <input type="range" id="weight-slope" min="0" max="100" value="15" />
         </div>
 
         <div class="slider-row">
-          <label><span>Thermal Extremes (LRO Diviner / MODIS)</span><span id="val-thermal">15%</span></label>
+          <label><span>Thermal Extremes (LRO Diviner / MODIS)</span><span id="val-thermal" class="weight-val">15%</span></label>
           <input type="range" id="weight-thermal" min="0" max="100" value="15" />
         </div>
 
         <div class="slider-row">
-          <label><span>Hyper-Aridity Index (JAXA G-Portal / SMAP)</span><span id="val-aridity">15%</span></label>
+          <label><span>Hyper-Aridity Index (JAXA G-Portal / SMAP)</span><span id="val-aridity" class="weight-val">15%</span></label>
           <input type="range" id="weight-aridity" min="0" max="100" value="15" />
         </div>
 
         <div class="slider-row">
-          <label><span>Subsurface Water-Ice / ISRU Potential</span><span id="val-ice">10%</span></label>
+          <label><span>Subsurface Water-Ice / ISRU Potential</span><span id="val-ice" class="weight-val">10%</span></label>
           <input type="range" id="weight-ice" min="0" max="100" value="10" />
         </div>
       </div>
     </section>
 
-    <!-- Center Column: Interactive NASA GIBS Map & Ranked Earth Analog Sites -->
+    <!-- Center Column: Interactive Satellite Map, Live NASA POWER API Scanner & Ranked Candidates -->
     <section class="center-column">
       <div class="panel" style="padding: 0.85rem;">
         <div class="map-toolbar">
-          <span><strong>Interactive Earth Analog Map</strong> (Click any marker or layer icon in top-right of map to toggle NASA Worldview MODIS overlays)</span>
-          <span style="color: #38bdf8;">Live WMTS: NASA GIBS + Carto Dark</span>
+          <span>
+            <strong>Interactive Orbital Satellite Map</strong> &mdash; Click any marker to inspect, or <strong>click anywhere on Earth</strong> to run a live NASA POWER Satellite scan
+          </span>
+          <span style="color: #22d3ee; font-weight: 600;">Layers: Esri Satellite + NASA GIBS MODIS</span>
         </div>
+
         <div id="map"></div>
+
+        <!-- Live NASA Langley POWER Satellite API Telemetry Bar -->
+        <div class="live-scanner-bar">
+          <div class="scanner-metrics">
+            <span class="scanner-badge">LIVE NASA POWER API SCANNER</span>
+            <span id="scannerStatusText" style="color: #cbd5e1;">
+              Click any coordinate on the map above to fetch live NASA Langley satellite temperature, precipitation &amp; solar flux.
+            </span>
+          </div>
+          <button id="addScannedSiteBtn" class="btn-action primary" style="display: none; padding: 0.3rem 0.65rem; font-size: 0.7rem;">
+            + Add Scanned Site to Rankings
+          </button>
+        </div>
       </div>
 
       <div class="panel" style="flex: 1;">
         <div class="panel-header">
           <h2>Ranked Terrestrial Analog Candidates</h2>
-          <span style="font-size: 0.74rem; color: #94a3b8;">Click a site to inspect telemetry</span>
+          <div style="width: 220px;">
+            <input
+              type="text"
+              id="candidateSearchInput"
+              class="text-input"
+              placeholder="Search site, country, or tag..."
+              style="padding: 0.32rem 0.6rem; font-size: 0.74rem;"
+            />
+          </div>
         </div>
         <div id="analogRankingList" class="analog-list"></div>
       </div>
     </section>
 
-    <!-- Right Column: Side-by-Side Telemetry & Multi-Agency Citation Inspector -->
+    <!-- Right Column: Side-by-Side Telemetry Inspector & Hardware Stress Simulator -->
     <section class="panel">
       <div class="panel-header">
         <h2>3. Analog Telemetry Inspector</h2>
@@ -116,9 +181,9 @@
       </div>
 
       <div>
-        <h3 id="inspectorTitle" style="font-size: 1rem; font-weight: 700;">Select Site</h3>
-        <p id="inspectorSubtitle" style="font-size: 0.76rem; color: #38bdf8; margin-bottom: 0.45rem;"></p>
-        <p id="inspectorSummary" style="font-size: 0.78rem; color: #cbd5e1;"></p>
+        <h3 id="inspectorTitle" style="font-size: 0.98rem; font-weight: 800;">Select Site</h3>
+        <p id="inspectorSubtitle" style="font-size: 0.73rem; color: #22d3ee; margin-bottom: 0.35rem;"></p>
+        <p id="inspectorSummary" style="font-size: 0.75rem; color: #cbd5e1;"></p>
       </div>
 
       <div class="metric-grid">
@@ -144,21 +209,96 @@
         <canvas id="telemetryRadarChart"></canvas>
       </div>
 
+      <!-- 4. Hardware & Rover Field-Test Stress Simulator -->
+      <div class="simulator-box">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.73rem; font-weight: 800; color: #22d3ee; text-transform: uppercase;">
+            4. Hardware &amp; Rover Field-Test Simulator
+          </span>
+          <span style="font-size: 0.65rem; color: #94a3b8;">Engineering Stress Model</span>
+        </div>
+
+        <select id="hardwareSystemSelect" class="select-input" style="padding: 0.4rem 0.55rem; font-size: 0.75rem;">
+          <option value="ltv_rover">Artemis Lunar Terrain Vehicle (LTV / Pressurized Rover)</option>
+          <option value="xemu_suit">xEMU / Axiom Extravehicular Mobility Spacesuit</option>
+          <option value="trident_drill">TRIDENT Cryogenic Regolith &amp; Ice Drill (ISRU)</option>
+          <option value="fission_habitat">Kilopower Fission Surface Habitat Array</option>
+        </select>
+
+        <div class="sim-gauge-grid">
+          <div class="sim-gauge-item">
+            <div class="g-label">Wheel Slip / Traction Risk</div>
+            <div id="simSlipVal" class="g-val" style="color: #fbbf24;">--%</div>
+          </div>
+          <div class="sim-gauge-item">
+            <div class="g-label">Cryogenic Thermal Delta</div>
+            <div id="simDeltaTempVal" class="g-val" style="color: #38bdf8;">-- K</div>
+          </div>
+          <div class="sim-gauge-item">
+            <div class="g-label">ISRU / System Power Load</div>
+            <div id="simPowerVal" class="g-val" style="color: #34d399;">-- W</div>
+          </div>
+          <div class="sim-gauge-item">
+            <div class="g-label">SAR Abrasive Regolith Wear</div>
+            <div id="simWearVal" class="g-val" style="color: #f43f5e;">--%</div>
+          </div>
+        </div>
+
+        <div id="simVerdictBanner" class="verdict-banner optimal">
+          OPTIMAL ANALOG TESTBED
+        </div>
+      </div>
+
       <div>
-        <div style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.35rem;">
+        <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">
           RECOMMENDED MISSION TESTING APPLICATIONS
         </div>
         <div id="inspectorTags" class="tag-list"></div>
       </div>
 
       <div>
-        <div style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.35rem;">
+        <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">
           VERIFIED SPACE AGENCY DATA SOURCES
         </div>
         <ul id="inspectorSources" class="source-list"></ul>
       </div>
     </section>
   </main>
+
+  <!-- 60-Pair Compatibility Matrix Modal -->
+  <div id="matrixModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 style="font-size: 1rem; color: #22d3ee; text-transform: uppercase;">
+            Complete Multi-Agency Compatibility Matrix (All Target-to-Earth Pairs)
+          </h2>
+          <p style="font-size: 0.74rem; color: #94a3b8;">
+            Dynamically reflects your active parameter weights across all Moon and Mars reference bases
+          </p>
+        </div>
+        <button id="closeMatrixModalBtn" class="btn-action">Close [X]</button>
+      </div>
+      <div class="modal-body">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Extraterrestrial Target</th>
+              <th>Earth Analog Candidate</th>
+              <th>Overall Match</th>
+              <th>Geology</th>
+              <th>SAR Roughness</th>
+              <th>Slope</th>
+              <th>Thermal</th>
+              <th>Aridity</th>
+              <th>Ice ISRU</th>
+            </tr>
+          </thead>
+          <tbody id="matrixTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- External Libraries: Leaflet.js & Chart.js -->
   <script
@@ -168,7 +308,7 @@
   ></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- Application Data & Logic -->
+  <!-- Application Data & Mission Control Logic -->
   <script src="assets/js/data.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

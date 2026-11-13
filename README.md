@@ -1,4 +1,4 @@
-# Dark Aero — Planetary Analog Decision Support System
+# Dark Aero v2.0 — Planetary Analog Decision Support System
 
 **2026 NASA International Space Apps Challenge**  
 **Challenge:** Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars  
@@ -6,28 +6,28 @@
 
 ---
 
-## 1. Project Overview
+## 1. Executive Summary
 
-**Dark Aero** is a multi-agency geospatial and planetary science decision-support platform designed to identify, rank, and visualize terrestrial locations on Earth that serve as high-fidelity operational analogs for permanent Moon base locations (such as the Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (such as Jezero Crater, Arcadia Planitia, and Valles Marineris).
+**Dark Aero v2.0** is an aerospace-grade geospatial decision-support platform and hardware stress simulator designed to identify, rank, and evaluate terrestrial locations on Earth that serve as high-fidelity operational analogs for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
 
-Instead of relying on static qualitative descriptions, Dark Aero synthesizes **six quantitative planetary parameters** across five space agencies (**NASA, CSA, ESA, and JAXA**):
-1. **Basaltic & Silicate Mineralogy Similarity**
-2. **Radar Surface Roughness & Circular Polarization Ratio (CPR)**
-3. **Topographic Slope Gradients**
-4. **Cryogenic & Diurnal Surface Temperature Regimes**
-5. **Hyper-Aridity & Desiccation Index**
-6. **Subsurface Water-Ice & Permafrost ISRU Potential**
+### What's New in Mission Control v2.0:
+* **Keyless High-Resolution Satellite Map:** Default **Esri World Imagery** + **NASA Worldview GIBS** (`MODIS Terra True Color`, `Blue Marble Next Generation`, and `MODIS Land Surface Temperature`) configured with smooth multi-zoom scaling and zero API key watermarks.
+* **Interactive 3D Planetary Target Globe:** Real-time HTML5 Canvas 3D orbital globe for the Moon and Mars featuring latitude/longitude graticules, drag-to-rotate controls, surface gravity/irradiance telemetry, and an active landing-site beacon.
+* **Live NASA Langley POWER Satellite API Scanner:** Click **anywhere on Earth** on the interactive map to query NASA's live `prediction Of Worldwide Energy Resources (POWER)` satellite climatology API for real-time surface temperature, annual precipitation, and solar irradiance—and add any scanned coordinate directly to the analog ranking list.
+* **Hardware & Rover Field-Test Stress Simulator:** Models mechanical wheel-slip risk, cryogenic thermal delta ($\Delta T$), ISRU drilling power load (Watts), and SAR abrasive regolith wear across four mission systems (*Artemis LTV Rover*, *xEMU Spacesuit*, *TRIDENT Ice Drill*, and *Kilopower Fission Habitat*).
+* **Mission Priority Presets & 60-Pair Matrix Modal:** Instant one-click presets (*Balanced Science*, *ISRU Ice Mining*, *Rover Mobility*, *Lava Tube Habitat*), real-time search filtering, a full 60-pair interactive comparison modal, and one-click **JSON** and **CSV** exports.
 
 ---
 
-## 2. Space Agency Datasets & Resources Used
+## 2. Multi-Agency Space Datasets & APIs Integrated
 
-| Space Agency | Dataset / Portal | Role in Dark Aero Architecture |
+| Space Agency | Dataset / API Portal | Role in Dark Aero v2.0 Architecture |
 | :--- | :--- | :--- |
-| **NASA** | **LRO Diviner Lunar Radiometer** | Benchmark polar cryogenic surface temperatures (Kelvin) and permanently shadowed crater volatility metrics at Shackleton Crater and Malapert Massif. |
+| **NASA** | **LRO Diviner Lunar Radiometer** | Benchmark polar cryogenic surface temperatures (95 K–112 K) and permanently shadowed crater volatility metrics at Shackleton Crater and Malapert Massif. |
 | **NASA** | **LRO Mini-RF & LOLA** | S/X-band radar Circular Polarization Ratio (CPR) for regolith blockiness and laser altimetry slope gradients. |
+| **NASA** | **Langley POWER REST API** | Live point-query satellite climatology (`TS`, `PRECTOTCORR`, `ALLSKY_SFC_SW_DWN`) for any user-clicked coordinate on Earth. |
 | **NASA** | **Planetary Data System (PDS)** | Mars 2020 MEDA meteorology, MRO CRISM sulfate/phyllosilicate mineralogy, and SHARAD subsurface ice radar profiles. |
-| **NASA** | **NASA Worldview (GIBS) & Earthdata Search** | Live WMTS satellite map tiles (`MODIS_Terra_CorrectedReflectance_TrueColor` and `MODIS_Terra_Land_Surface_Temp_Day`) and ASTER GDEM elevation models. |
+| **NASA** | **NASA Worldview (GIBS) & Earthdata Search** | Live WMTS satellite map tiles (`MODIS_Terra_CorrectedReflectance_TrueColor`, `BlueMarble_NextGeneration`, and `MODIS_Terra_Land_Surface_Temp_Day`). |
 | **CSA** | **RADARSAT-1 & RADARSAT Constellation Mission (RCM)** | C-band Synthetic Aperture Radar (SAR) HH/HV backscatter roughness indices across Arctic impact craters (Devon Island, Axel Heiberg) and basaltic lava flows. |
 | **ESA** | **Copernicus Data Space & Open Science Catalog** | Sentinel-1 InSAR surface roughness and Sentinel-2 hyperspectral iron-oxide/sulfate surface reflectance indices. |
 | **JAXA** | **JAXA G-Portal** | Global precipitation, hyper-aridity confirmation, and cryosphere snow/ice cover records. |
@@ -37,42 +37,33 @@ Instead of relying on static qualitative descriptions, Dark Aero synthesizes **s
 ## 3. Repository Structure
 
 ```text
-dark-aero-planetary-analogs/
-├── index.html                        # Main interactive Mission Control web dashboard
-├── README.md                         # Project documentation for NASA Space Apps judges
+dark-aero-nasa-space-apps-2026/
+├── index.html                        # Main Mission Control v2.0 web application
+├── README.md                         # Comprehensive technical documentation
 ├── LICENSE                           # MIT Open-Source License
 ├── requirements.txt                  # Optional Python dependencies for data pipelines
 ├── assets/
 │   ├── css/
-│   │   └── styles.css                # Aerospace dark-mode responsive UI stylesheet
+│   │   └── styles.css                # Aerospace glassmorphism HUD stylesheet
 │   └── js/
 │       ├── data.js                   # Pre-compiled multi-agency planetary dataset bundle
-│       └── app.js                    # Real-time similarity engine, Leaflet GIBS map & Chart.js telemetry
+│       └── app.js                    # 3D Globe, NASA POWER API scanner, Hardware Simulator & Map controller
 ├── data/
 │   ├── nasa_analog_matches.json      # Structured JSON output generated by the Python matching engine
 │   └── analog_comparison_matrix.csv  # Tabular compatibility matrix (60 target-to-Earth pair evaluations)
 └── scripts/
     ├── analog_matching_engine.py     # Core Python multi-criteria scoring & dataset export pipeline
-    └── sar_roughness_analyzer.py     # CSA RADARSAT-1 / NASA LRO Mini-RF SAR backscatter & CPR calculator
+    └── sar_roughness_analyzer.py     # CSA RADARSAT-1 / NASA LRO Mini-RF SAR backscatter & rover slip calculator
 ```
 
 ---
 
-## 4. Quick Start & Deployment Instructions
+## 4. Deployment & Updating GitHub Pages
 
-### Option A: Instant Web Execution / GitHub Pages (Zero Setup)
-1. Clone or extract this repository and push all files to your public GitHub repository.
-2. Open `index.html` directly in any modern browser, **or** enable **GitHub Pages** (`Settings` -> `Pages` -> `Deploy from branch: main / root`).
-3. Toggle the layer control in the top-right corner of the interactive map to switch between the Dark Aerospace Vector Map and live **NASA Worldview (GIBS)** MODIS satellite layers.
-
-### Option B: Re-running the Python Data & SAR Pipelines
-If you want to modify planetary parameters or add new candidate sites in Python:
 ```bash
-# 1. Run the multi-agency similarity matching engine
-python scripts/analog_matching_engine.py
-
-# 2. Run the CSA RADARSAT / LRO Mini-RF SAR backscatter calibration script
-python scripts/sar_roughness_analyzer.py
+git add .
+git commit -m "Upgrade to Dark Aero v2.0: 3D Planetary Globe, Live NASA POWER API Scanner, Hardware Simulator & Keyless Satellite Map"
+git push origin main
 ```
 
 ---

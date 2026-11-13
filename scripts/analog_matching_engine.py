@@ -1,14 +1,14 @@
 """
-Dark Aero - Multi-Agency Planetary Analog Matching Engine
+Dark Aero - Multi-Agency Planetary Analog Matching Engine (v2.0)
 2026 NASA International Space Apps Challenge
 Challenge: Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars
 
-This module integrates planetary science metrics from:
+This module integrates planetary science metrics and hardware stress models from:
 - NASA Lunar Reconnaissance Orbiter (LRO Diviner, LOLA, Mini-RF, LEND)
-- NASA Planetary Data System (PDS) - Mars 2020 MEDA, MRO CRISM, MOLA
-- NASA Earthdata Search & NASA Worldview (GIBS MODIS/ASTER GDEM)
+- NASA Planetary Data System (PDS) - Mars 2020 MEDA, MRO CRISM, MOLA, SHARAD
+- NASA Earthdata Search, NASA Worldview (GIBS), and NASA Langley POWER API
 - Canadian Space Agency (CSA) RADARSAT-1 & RADARSAT Constellation Mission (RCM) SAR
-- European Space Agency (ESA) Copernicus Sentinel-2 Surface Reflectance
+- European Space Agency (ESA) Copernicus Sentinel-1 & Sentinel-2
 - Japan Aerospace Exploration Agency (JAXA) G-Portal Precipitation & Cryosphere
 """
 
@@ -34,6 +34,8 @@ class ExtraterrestrialBase:
     radar_cpr: float          # Circular Polarization Ratio / SAR surface roughness (0.0 - 1.0)
     aridity_index: float      # Hyper-aridity index (0.0 - 1.0)
     ice_potential: float      # Subsurface water-ice / permafrost index (0.0 - 1.0)
+    gravity_m_s2: float       # Surface gravity (m/s^2)
+    solar_irradiance_w_m2: float
     primary_datasets: List[str]
     mission_rationale: str
 
@@ -59,7 +61,7 @@ class EarthAnalogSite:
 
 
 class PlanetaryAnalogMatcher:
-    """Computes multi-parameter similarity scores between Moon/Mars bases and Earth analogs."""
+    """Computes multi-parameter similarity scores and hardware engineering telemetry."""
 
     def __init__(self, weights: Dict[str, float] = None):
         self.weights = weights or {
@@ -72,24 +74,12 @@ class PlanetaryAnalogMatcher:
         }
 
     def compute_similarity(self, target: ExtraterrestrialBase, earth: EarthAnalogSite) -> Dict[str, float]:
-        # 1. Geological / Basalt composition similarity
         geology_score = 1.0 - abs(target.basalt_index - earth.basalt_index)
-
-        # 2. Radar surface roughness (LRO Mini-RF CPR vs CSA RADARSAT SAR roughness)
         roughness_score = 1.0 - abs(target.radar_cpr - earth.sar_roughness)
-
-        # 3. Topographic slope similarity (normalized over a 25-degree operational envelope)
         slope_score = max(0.0, 1.0 - (abs(target.slope_deg - earth.slope_deg) / 25.0))
-
-        # 4. Thermal regime similarity (scaled relative to terrestrial-planetary cryosphere offset)
-        # Normalizes extreme cryogenic lunar/Martian temperatures against Earth's coldest/extreme zones
         temp_diff = abs(target.mean_temp_k - earth.mean_temp_k)
         thermal_score = max(0.0, 1.0 - (temp_diff / 220.0))
-
-        # 5. Hyper-aridity similarity (JAXA G-Portal / NASA SMAP vs planetary desiccation)
         aridity_score = 1.0 - abs(target.aridity_index - earth.aridity_index)
-
-        # 6. Subsurface ice / ISRU volatile potential
         ice_score = 1.0 - abs(target.ice_potential - earth.ice_potential)
 
         weighted_total = (
@@ -127,6 +117,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.72,
             aridity_index=1.00,
             ice_potential=0.95,
+            gravity_m_s2=1.62,
+            solar_irradiance_w_m2=1361.0,
             primary_datasets=[
                 "NASA LRO Diviner Lunar Radiometer (Polar Thermal Maps)",
                 "NASA LRO Mini-RF (S/X-Band Radar Backscatter & CPR)",
@@ -148,6 +140,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.64,
             aridity_index=1.00,
             ice_potential=0.82,
+            gravity_m_s2=1.62,
+            solar_irradiance_w_m2=1361.0,
             primary_datasets=[
                 "NASA LRO LROC NAC/WAC Stereo Topography",
                 "NASA LRO Diviner Polar Resource Products",
@@ -168,6 +162,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.81,
             aridity_index=1.00,
             ice_potential=0.20,
+            gravity_m_s2=1.62,
+            solar_irradiance_w_m2=1361.0,
             primary_datasets=[
                 "NASA LRO Mini-RF Pyroclastic Deposit Maps",
                 "NASA LRO Diviner Silicate Mineralogy Index",
@@ -188,6 +184,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.58,
             aridity_index=0.98,
             ice_potential=0.45,
+            gravity_m_s2=3.72,
+            solar_irradiance_w_m2=590.0,
             primary_datasets=[
                 "NASA PDS Mars 2020 Perseverance MEDA Weather Data",
                 "NASA MRO CRISM Hyperspectral Mineralogy",
@@ -208,6 +206,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.52,
             aridity_index=0.95,
             ice_potential=0.94,
+            gravity_m_s2=3.72,
+            solar_irradiance_w_m2=540.0,
             primary_datasets=[
                 "NASA MRO SHARAD Subsurface Radar Sounder",
                 "NASA Mars Odyssey THEMIS Thermal Inertia",
@@ -228,6 +228,8 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             radar_cpr=0.76,
             aridity_index=0.97,
             ice_potential=0.55,
+            gravity_m_s2=3.72,
+            solar_irradiance_w_m2=605.0,
             primary_datasets=[
                 "NASA MRO HiRISE & CTX Canyon Wall Imagery",
                 "NASA PDS Mars Express OMEGA Sulfate Maps",
@@ -472,7 +474,7 @@ def export_datasets(output_dir: str):
     analogs = get_earth_analogs()
 
     payload = {
-        "project": "Dark Aero - Planetary Analog Decision Support System",
+        "project": "Dark Aero - Planetary Analog Decision Support System (v2.0 Mission Control)",
         "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
         "event": "2026 NASA International Space Apps Challenge",
         "default_weights": matcher.weights,
@@ -516,7 +518,6 @@ def export_datasets(output_dir: str):
             })
         payload["earth_analogs"].append(site_dict)
 
-    # Sort comparison matrix per target by overall match percentage descending
     for target_id in payload["comparison_matrix"]:
         payload["comparison_matrix"][target_id].sort(
             key=lambda x: x["overall_match_pct"], reverse=True

@@ -1,6 +1,6 @@
-// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset
+// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset (v2.0)
 window.DARK_AERO_DATA = {
-  "project": "Dark Aero - Planetary Analog Decision Support System",
+  "project": "Dark Aero - Planetary Analog Decision Support System (v2.0 Mission Control)",
   "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
   "event": "2026 NASA International Space Apps Challenge",
   "default_weights": {
@@ -31,6 +31,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.72,
       "aridity_index": 1.0,
       "ice_potential": 0.95,
+      "gravity_m_s2": 1.62,
+      "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
         "NASA LRO Diviner Lunar Radiometer (Polar Thermal Maps)",
         "NASA LRO Mini-RF (S/X-Band Radar Backscatter & CPR)",
@@ -58,6 +60,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.64,
       "aridity_index": 1.0,
       "ice_potential": 0.82,
+      "gravity_m_s2": 1.62,
+      "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
         "NASA LRO LROC NAC/WAC Stereo Topography",
         "NASA LRO Diviner Polar Resource Products",
@@ -84,6 +88,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.81,
       "aridity_index": 1.0,
       "ice_potential": 0.2,
+      "gravity_m_s2": 1.62,
+      "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
         "NASA LRO Mini-RF Pyroclastic Deposit Maps",
         "NASA LRO Diviner Silicate Mineralogy Index",
@@ -110,6 +116,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.58,
       "aridity_index": 0.98,
       "ice_potential": 0.45,
+      "gravity_m_s2": 3.72,
+      "solar_irradiance_w_m2": 590.0,
       "primary_datasets": [
         "NASA PDS Mars 2020 Perseverance MEDA Weather Data",
         "NASA MRO CRISM Hyperspectral Mineralogy",
@@ -136,6 +144,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.52,
       "aridity_index": 0.95,
       "ice_potential": 0.94,
+      "gravity_m_s2": 3.72,
+      "solar_irradiance_w_m2": 540.0,
       "primary_datasets": [
         "NASA MRO SHARAD Subsurface Radar Sounder",
         "NASA Mars Odyssey THEMIS Thermal Inertia",
@@ -162,6 +172,8 @@ window.DARK_AERO_DATA = {
       "radar_cpr": 0.76,
       "aridity_index": 0.97,
       "ice_potential": 0.55,
+      "gravity_m_s2": 3.72,
+      "solar_irradiance_w_m2": 605.0,
       "primary_datasets": [
         "NASA MRO HiRISE & CTX Canyon Wall Imagery",
         "NASA PDS Mars Express OMEGA Sulfate Maps",
