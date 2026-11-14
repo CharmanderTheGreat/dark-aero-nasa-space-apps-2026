@@ -30,7 +30,7 @@
     </div>
 
     <div class="nav-actions">
-      <button id="startJudgeTourBtn" class="btn-action active-mode">Judge Tour</button>
+      <button id="startJudgeTourBtn" class="btn-action active-mode" aria-pressed="false">&#9654; Guided Tour</button>
       <button id="openMethodBtn" class="btn-action">Method &amp; Limits</button>
       <button id="openMatrixModalBtn" class="btn-action">60-Pair Matrix</button>
       <button id="exportCsvBtn" class="btn-action">CSV</button>
@@ -364,7 +364,7 @@
           Calibrate C-band SAR backscatter from <strong>CSA RADARSAT-1 / RCM</strong> to compute incidence-corrected roughness and <strong>LRO Mini-RF</strong> CPR equivalents.
         </p>
 
-        <div class="simulator-box" style="flex:1; justify-content:space-between;">
+        <div class="simulator-box sar-box" style="flex:1;">
           <div class="slider-row">
             <label><span>Co-Pol Backscatter &sigma;⁰<sub>HH</sub></span><span id="sarHhVal" class="weight-val">-6.8 dB</span></label>
             <input type="range" id="sarHhSlider" min="-20" max="-2" step="0.2" value="-6.8" />
@@ -416,15 +416,20 @@
   </main>
 
   <!-- Judge Guided Tour Floating Card -->
-  <div id="judgeTourPopover" class="tour-popover">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span id="tourStepBadge" class="scanner-badge cyan">JUDGE TOUR 1 / 5</span>
-      <button id="tourCloseBtn" class="btn-action" style="padding:1px 6px; font-size:9.5px;">Close [X]</button>
+  <div id="judgeTourPopover" class="tour-popover" role="dialog" aria-label="Guided tour" aria-live="polite">
+    <div class="tour-head">
+      <span id="tourStepBadge" class="tour-step-badge">STEP 1 / 7</span>
+      <button id="tourCloseBtn" class="btn-action" aria-label="End the guided tour">End tour &#10005;</button>
     </div>
-    <h4 id="tourStepTitle" style="font-family:var(--font-display); font-size:13px; color:#f1f5f9;">Step Title</h4>
-    <p id="tourStepDesc" style="font-size:11px; color:#94a3b8; line-height:1.45;">Step description</p>
-    <div style="display:flex; justify-content:flex-end;">
-      <button id="tourNextBtn" class="btn-action primary">Next Step &rarr;</button>
+    <div id="tourDots" class="tour-dots" role="group" aria-label="Tour progress"></div>
+    <h4 id="tourStepTitle" class="tour-title">Step title</h4>
+    <p id="tourStepDesc" class="tour-desc">Step description</p>
+    <div class="tour-foot">
+      <span class="tour-hint">&larr; &rarr; keys &bull; Esc to exit</span>
+      <div class="tour-nav">
+        <button id="tourBackBtn" class="btn-action">&larr; Back</button>
+        <button id="tourNextBtn" class="btn-action primary">Next &rarr;</button>
+      </div>
     </div>
   </div>
 

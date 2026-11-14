@@ -119,6 +119,7 @@ body {
 }
 
 .brand-title h1 {
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 13.5px;
   font-weight: 700;
@@ -247,17 +248,13 @@ body {
   padding: 9px 10px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 8px;
   min-height: 0;
   overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.panel.tour-highlight {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 1px var(--accent-cyan), 0 0 24px rgba(56, 189, 248, 0.22);
-}
 
 .panel-header {
   display: flex;
@@ -460,8 +457,10 @@ input.text-input:focus {
 .sliders-container {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 3px;
+  justify-content: space-evenly;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
 }
 
 .slider-row {
@@ -479,7 +478,7 @@ input.text-input:focus {
 
 .slider-row input[type="range"] {
   width: 100%;
-  height: 3px;
+  height: 16px;
   accent-color: var(--accent-cyan);
   cursor: pointer;
 }
@@ -612,7 +611,7 @@ input.text-input:focus {
 .analog-card.active {
   background: var(--bg-surface-hover);
   border-color: var(--border-accent);
-  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+  box-shadow: inset 3px 0 0 var(--accent-cyan), inset 0 0 0 1px rgba(56, 189, 248, 0.2);
 }
 
 .analog-card-header {
@@ -777,13 +776,13 @@ input.text-input:focus {
   position: relative;
   flex: 1;
   min-height: 130px;
-  max-height: 175px;
+  max-height: 300px;
   width: 100%;
 }
 
 .chart-container.tall {
   min-height: 165px;
-  max-height: 215px;
+  max-height: 320px;
 }
 
 /* Hardware & Rover Stress Simulator */
@@ -890,27 +889,6 @@ input.text-input:focus {
   border-radius: 3px;
   background: rgba(16, 185, 129, 0.14);
   color: #34d399;
-}
-
-/* Judge Guided Tour Floating Popover */
-.tour-popover {
-  position: fixed;
-  bottom: 18px;
-  right: 18px;
-  width: 340px;
-  background: rgba(11, 15, 25, 0.98);
-  border: 1px solid var(--accent-cyan);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.25);
-  border-radius: 8px;
-  padding: 12px 14px;
-  z-index: 2500;
-  display: none;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tour-popover.open {
-  display: flex;
 }
 
 /* 60-Pair Matrix Modal */
@@ -1136,6 +1114,100 @@ input.text-input:focus {
   .dashboard-grid { grid-template-columns: 350px 1fr 450px; }
 }
 
+
+/* ==========================================================================
+   Guided tour: spotlight + step card (v4.1)
+   ========================================================================== */
+.tour-highlight {
+  position: relative;
+  z-index: 1500;
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 0 9999px rgba(3, 5, 10, 0.78), 0 0 32px rgba(56, 189, 248, 0.4) !important;
+}
+
+.tour-popover {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: #0b1020;
+  border: 1px solid var(--accent-cyan);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.9), 0 0 24px rgba(56, 189, 248, 0.3);
+  border-radius: 10px;
+  padding: 12px 14px 12px;
+  z-index: 2500;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+.tour-popover.open { display: flex; }
+
+.tour-head { display: flex; justify-content: space-between; align-items: center; }
+.tour-step-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #04121c;
+  background: var(--accent-cyan);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.tour-dots { display: flex; gap: 6px; align-items: center; }
+.tour-dot {
+  flex: 1;
+  height: 5px;
+  border: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease;
+}
+.tour-dot.done { background: rgba(56, 189, 248, 0.5); }
+.tour-dot.current { background: var(--accent-cyan); box-shadow: 0 0 8px rgba(56, 189, 248, 0.8); }
+.tour-dot:hover { background: rgba(56, 189, 248, 0.75); }
+
+.tour-title { font-family: var(--font-display); font-size: 15px; line-height: 1.25; color: #f8fafc; }
+.tour-desc { font-size: 12px; line-height: 1.5; color: #aab6c8; }
+.tour-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tour-hint { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+.tour-nav { display: flex; gap: 6px; }
+.tour-nav .btn-action { font-size: 11.5px; padding: 5px 11px; }
+.tour-nav .btn-action:disabled { opacity: 0.35; cursor: default; }
+
+.tab-btn.tour-pulse { animation: tourPulse 1.3s ease-in-out infinite; }
+@keyframes tourPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+  50% { box-shadow: 0 0 0 5px rgba(56, 189, 248, 0); }
+}
+
+/* Active tour button in the header */
+body.tour-active #startJudgeTourBtn { background: rgba(56, 189, 248, 0.16); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+/* Map legend */
+.map-legend {
+  background: rgba(8, 11, 19, 0.88);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: flex;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+.map-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.map-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; border: 1px solid #06080d; }
+
+@media (max-width: 1500px) {
+  .brand-subtitle { display: none; }
+}
+
+@media (max-width: 1100px) {
+  .tour-popover { left: 50% !important; right: auto !important; top: auto !important; bottom: 12px !important; transform: translateX(-50%); }
+  .tour-highlight { box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 0 9999px rgba(3, 5, 10, 0.7) !important; }
+}
+
 /* Responsive fallback only for narrow mobile/tablet screens */
 @media (max-width: 1100px) {
   html,
@@ -1164,4 +1236,8 @@ input.text-input:focus {
   .inspector-tabs { grid-template-columns: repeat(3, 1fr); }
 }
 
-.slider-row input[type="range"] { margin-top: 5px; }
+
+/* Tab panes: pack content from the top on tall screens instead of stretching with big gaps */
+#tab-sar { justify-content: flex-start; gap: clamp(6px, 1.4vh, 16px); }
+#tab-sar > :last-child { margin-top: auto; }
+.sar-box { justify-content: flex-start; gap: clamp(8px, 2vh, 22px); }

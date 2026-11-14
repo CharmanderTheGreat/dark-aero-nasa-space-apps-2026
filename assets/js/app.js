@@ -468,6 +468,19 @@
       });
     });
 
+    // Legend explaining the marker colours
+    const legend = L.control({ position: "bottomleft" });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "map-legend");
+      div.innerHTML =
+        '<span><i style="background:#38bdf8"></i>Selected</span>' +
+        '<span><i style="background:#10b981"></i>#1 match</span>' +
+        '<span><i style="background:#64748b"></i>Other analogs</span>' +
+        '<span><i style="background:#f59e0b"></i>Live scan</span>';
+      return div;
+    };
+    legend.addTo(map);
+
     markersLayer = L.layerGroup().addTo(map);
     traverseMarkersLayer = L.layerGroup().addTo(map);
 
@@ -1158,6 +1171,7 @@
         fillOpacity: 0.92
       });
 
+      circle.bindTooltip(`#${idx + 1} ${shortName(item.earth.name)} · ${item.scores.overall}%`, { direction: "top", offset: [0, -6] });
       circle.bindPopup(`
         <div style="font-family:sans-serif; min-width:195px;">
           <strong style="font-size:12px;">#${idx + 1} ${item.earth.name}</strong><br/>
@@ -1446,92 +1460,157 @@
   // 7. 60-SECOND JUDGE GUIDED TOUR
   // ============================================================================
   function setupJudgeGuidedTour() {
-    const tourPopover = document.getElementById("judgeTourPopover");
-    const stepBadge = document.getElementById("tourStepBadge");
-    const stepTitle = document.getElementById("tourStepTitle");
-    const stepDesc = document.getElementById("tourStepDesc");
+    const popover = document.getElementById("judgeTourPopover");
+    const badge = document.getElementById("tourStepBadge");
+    const titleEl = document.getElementById("tourStepTitle");
+    const descEl = document.getElementById("tourStepDesc");
+    const dotsEl = document.getElementById("tourDots");
     const nextBtn = document.getElementById("tourNextBtn");
+    const backBtn = document.getElementById("tourBackBtn");
     const closeBtn = document.getElementById("tourCloseBtn");
+    const startBtn = document.getElementById("startJudgeTourBtn");
 
+    // target = element that gets the spotlight; pos = where the card sits so it never covers the target
     const steps = [
       {
-        panelId: "panel-left",
+        target: "#panel-left",
         tabId: "tab-overview",
-        title: "Step 1: Pick a Moon/Mars Target & Mission Profile",
-        desc: "Select an Artemis or Mars base on the 3D globe, then tune the six weights or pick a mission preset (ISRU, rover, lava habitat)."
+        pos: { left: "340px", bottom: "20px" },
+        title: "Pick a Moon/Mars target & mission profile",
+        desc: "Choose an Artemis or Mars base on the 3D globe, then tune the six weights or use a mission preset (ISRU, rover, lava habitat)."
       },
       {
-        panelId: "panel-center",
+        target: ".map-panel",
         tabId: "tab-overview",
-        title: "Step 2: Map + Live Scan (2 real datasets)",
-        desc: "Click any spot on Earth: NASA POWER gives real temperature, day/night range and precipitation; a 90 m DEM gives real elevation and slope. Geology and SAR roughness stay labelled 'assumed'."
+        pos: { right: "20px", bottom: "20px" },
+        title: "Map + live scan (2 real datasets)",
+        desc: "Click anywhere on Earth: NASA POWER gives real temperature, day/night range and rainfall; a 90 m DEM gives real elevation and slope. Geology and SAR roughness stay labelled 'assumed'."
       },
       {
-        panelId: "panel-center",
+        target: ".candidates-panel",
         tabId: "tab-overview",
-        title: "Step 3: Weight Robustness & Mission Picks",
-        desc: "Does the winner depend on how you weight things? The robustness line re-ranks 2,000 random weightings. The four chips show the best analog per mission type."
+        pos: { left: "350px", top: "64px" },
+        title: "Weight robustness & mission picks",
+        desc: "Does the winner depend on your weights? The robustness line re-ranks 2,000 random weightings. The four chips show the best analog per mission type, and a click applies it."
       },
       {
-        panelId: "panel-right",
+        target: "#panel-right",
         tabId: "tab-why",
-        title: "Step 4: Why This Score? (Explainability)",
-        desc: "See which parameters cost points, whether a critical parameter failed, the data basis of every input (curated / measured / derived / assumed) and the site's real field heritage."
+        pos: { left: "350px", top: "64px" },
+        title: "Why this score? (explainability)",
+        desc: "See which parameters cost points, whether a critical parameter failed, the data basis of every input and the site's field heritage."
       },
       {
-        panelId: "panel-right",
+        target: "#panel-right",
         tabId: "tab-overview",
-        title: "Step 5: Hardware & Rover Stress Simulator",
+        pos: { left: "350px", top: "64px" },
+        title: "Hardware & rover stress simulator",
         desc: "Illustrative wheel-slip, thermal delta, power draw and regolith wear for rovers, suits and drills. Heuristic estimates, not validated vehicle models."
       },
       {
-        panelId: "panel-right",
+        target: "#panel-right",
         tabId: "tab-compare",
-        title: "Step 6: Head-to-Head A/B Comparator",
+        pos: { left: "350px", top: "64px" },
+        title: "Head-to-head A/B comparator",
         desc: "Overlay two analogs (A solid, B dashed) against the target with a parameter-by-parameter winner table."
       },
       {
-        panelId: "panel-right",
+        target: "#panel-right",
         tabId: "tab-sar",
-        title: "Step 7: CSA RADARSAT SAR Polarimetry Lab",
-        desc: "Calibrate C-band HH/HV backscatter and incidence angle into a roughness index and Mini-RF CPR equivalent, then apply it to the selected site."
+        pos: { left: "350px", top: "64px" },
+        title: "CSA RADARSAT SAR polarimetry lab",
+        desc: "Calibrate C-band HH/HV backscatter and incidence angle into a roughness index and a Mini-RF CPR equivalent, then apply it to the selected site."
       }
     ];
 
     let currentStep = 0;
+    let active = false;
 
-    function renderTourStep(idx) {
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
-      const step = steps[idx];
-      const targetPanel = document.getElementById(step.panelId);
-      if (targetPanel) targetPanel.classList.add("tour-highlight");
-      activateInspectorTab(step.tabId);
+    // Progress dots (clickable)
+    dotsEl.innerHTML = "";
+    steps.forEach((_, i) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "tour-dot";
+      dot.setAttribute("aria-label", `Go to step ${i + 1}`);
+      dot.addEventListener("click", () => renderTourStep(i));
+      dotsEl.appendChild(dot);
+    });
 
-      stepBadge.textContent = `JUDGE TOUR ${idx + 1} / ${steps.length}`;
-      stepTitle.textContent = step.title;
-      stepDesc.textContent = step.desc;
-      nextBtn.textContent = idx === steps.length - 1 ? "Finish Tour" : "Next Step →";
-      tourPopover.classList.add("open");
+    function clearSpotlight() {
+      document.querySelectorAll(".tour-highlight").forEach((el) => el.classList.remove("tour-highlight"));
+      document.querySelectorAll(".tab-btn.tour-pulse").forEach((el) => el.classList.remove("tour-pulse"));
     }
 
-    document.getElementById("startJudgeTourBtn").addEventListener("click", () => {
-      currentStep = 0;
-      renderTourStep(currentStep);
+    function renderTourStep(idx) {
+      currentStep = idx;
+      active = true;
+      const step = steps[idx];
+      clearSpotlight();
+
+      const targetEl = document.querySelector(step.target);
+      if (targetEl) targetEl.classList.add("tour-highlight");
+      activateInspectorTab(step.tabId);
+      const tabBtn = document.querySelector(`.tab-btn[data-tab="${step.tabId}"]`);
+      if (tabBtn && step.target === "#panel-right") tabBtn.classList.add("tour-pulse");
+
+      badge.textContent = `STEP ${idx + 1} / ${steps.length}`;
+      titleEl.textContent = step.title;
+      descEl.textContent = step.desc;
+      nextBtn.textContent = idx === steps.length - 1 ? "Finish ✓" : "Next →";
+      backBtn.disabled = idx === 0;
+      Array.from(dotsEl.children).forEach((d, i) => {
+        d.classList.toggle("current", i === idx);
+        d.classList.toggle("done", i < idx);
+        if (i === idx) d.setAttribute("aria-current", "step");
+        else d.removeAttribute("aria-current");
+      });
+
+      // Place the card beside (never over) the spotlighted panel
+      ["left", "right", "top", "bottom"].forEach((side) => {
+        popover.style[side] = step.pos[side] || "auto";
+      });
+      popover.classList.add("open");
+      document.body.classList.add("tour-active");
+      startBtn.innerHTML = `Tour ${idx + 1}/${steps.length} &middot; End`;
+      startBtn.setAttribute("aria-pressed", "true");
+      nextBtn.focus({ preventScroll: true });
+    }
+
+    function endTour() {
+      active = false;
+      clearSpotlight();
+      popover.classList.remove("open");
+      document.body.classList.remove("tour-active");
+      startBtn.innerHTML = "&#9654; Guided Tour";
+      startBtn.setAttribute("aria-pressed", "false");
+    }
+
+    startBtn.addEventListener("click", () => {
+      if (active) endTour();
+      else renderTourStep(0);
     });
 
     nextBtn.addEventListener("click", () => {
-      if (currentStep < steps.length - 1) {
-        currentStep++;
-        renderTourStep(currentStep);
-      } else {
-        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
-        tourPopover.classList.remove("open");
-      }
+      if (currentStep < steps.length - 1) renderTourStep(currentStep + 1);
+      else endTour();
     });
+    backBtn.addEventListener("click", () => {
+      if (currentStep > 0) renderTourStep(currentStep - 1);
+    });
+    closeBtn.addEventListener("click", endTour);
 
-    closeBtn.addEventListener("click", () => {
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
-      tourPopover.classList.remove("open");
+    document.addEventListener("keydown", (e) => {
+      if (!active || document.querySelector(".modal-backdrop.open")) return;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        nextBtn.click();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        backBtn.click();
+      } else if (e.key === "Escape") {
+        endTour();
+      }
     });
   }
 
