@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Dark Aero v4.1 - Aerospace Mission Control UI Stylesheet
+   Dark Aero v4.2 - Aerospace Mission Control UI Stylesheet
    Fixed Single-Viewport Architecture (100vh, Zero Outer Tab Scroll)
    Typography: Space Grotesk + Plus Jakarta Sans + JetBrains Mono
    Color Palette: Deep Obsidian Void (#06080D) + Translucent Slate + Orbital Cyan/Amber
@@ -961,7 +961,7 @@ input.text-input:focus {
 }
 
 /* ==========================================================================
-   v4.1 additions: robustness, mission picks, explainability, data basis, a11y
+   v4.2 additions: robustness, mission picks, explainability, data basis, a11y
    ========================================================================== */
 :focus-visible {
   outline: 2px solid var(--accent-cyan);
@@ -1116,7 +1116,7 @@ input.text-input:focus {
 
 
 /* ==========================================================================
-   Guided tour: spotlight + step card (v4.1)
+   Guided tour: spotlight + step card (v4.2)
    ========================================================================== */
 .tour-highlight {
   position: relative;
@@ -1215,11 +1215,18 @@ body.tour-active #startJudgeTourBtn { background: rgba(56, 189, 248, 0.16); colo
     height: auto;
     overflow-y: auto;
   }
+  body { width: 100%; }
+  .top-nav { flex-wrap: wrap; height: auto; gap: 6px 10px; padding: 6px 10px; }
+  .telemetry-status-bar { display: none; }
+  .nav-actions { flex-wrap: wrap; justify-content: flex-end; }
   .dashboard-grid {
     height: auto;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow: visible;
   }
+  .dashboard-grid > *, .panel, .center-column { min-width: 0; max-width: 100%; }
+  .telemetry-strip, .scanner-metrics, .map-toolbar { flex-wrap: wrap; gap: 4px 8px; }
+  .map-notice { max-width: 90%; white-space: normal; text-align: center; }
   #map {
     height: 360px;
   }
@@ -1230,8 +1237,10 @@ body.tour-active #startJudgeTourBtn { background: rgba(56, 189, 248, 0.16); colo
 }
 
 @media (max-width: 640px) {
-  .top-nav { flex-wrap: wrap; height: auto; gap: 6px; padding: 6px 8px; }
-  .telemetry-status-bar { display: none; }
+  .brand-title h1 { white-space: normal; font-size: 12.5px; }
+  .nav-actions { justify-content: flex-start; width: 100%; }
+  .recommend-strip { grid-template-columns: 1fr 1fr; }
+  .lost-row { grid-template-columns: 96px 1fr 96px; }
   .analog-list { grid-template-columns: 1fr; }
   .inspector-tabs { grid-template-columns: repeat(3, 1fr); }
 }
@@ -1241,3 +1250,19 @@ body.tour-active #startJudgeTourBtn { background: rgba(56, 189, 248, 0.16); colo
 #tab-sar { justify-content: flex-start; gap: clamp(6px, 1.4vh, 16px); }
 #tab-sar > :last-child { margin-top: auto; }
 .sar-box { justify-content: flex-start; gap: clamp(8px, 2vh, 22px); }
+
+.card-remove {
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+  color: var(--text-muted);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.card-remove:hover { color: #fda4af; border-color: rgba(244, 63, 94, 0.6); background: rgba(244, 63, 94, 0.1); }
+
+#scannerStatusText { overflow-wrap: anywhere; min-width: 0; }
+.scanner-metrics { min-width: 0; }

@@ -1,5 +1,5 @@
 /**
- * Dark Aero v4.0 - Interactive CSA RADARSAT-1 / RCM SAR Polarimetry & Rover Slip Module
+ * Dark Aero v4.2 - Interactive CSA RADARSAT-1 / RCM SAR Polarimetry & Rover Slip Module
  * Converts C-band HH/HV radar backscatter (dB) and incidence angle into surface roughness,
  * Circular Polarization Ratio (CPR) proxy, and planetary rover wheel-slip risk in real time.
  */

@@ -1,4 +1,4 @@
-# Dark Aero v4.1 — Planetary Analog Decision Support System
+# Dark Aero v4.2 — Planetary Analog Decision Support System
 
 **2026 NASA International Space Apps Challenge**  
 **Challenge:** Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars  
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-**Dark Aero v4.1** is a single-viewport aerospace decision-support and planetary engineering platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
+**Dark Aero v4.2** is a single-viewport aerospace decision-support and planetary engineering platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
 
 ### Key Capabilities:
 1. **Fixed Single-Viewport Aerospace Mission Console (`100vh`):** High-density obsidian telemetry interface featuring `Space Grotesk`, `Plus Jakarta Sans`, and `JetBrains Mono` typography with zero outer page scrolling.
@@ -20,7 +20,7 @@
 
 ---
 
-## 1b. What's new in v4.1
+## 1b. What's new in v4.2 (since v4.0)
 
 | Area | Change |
 | :--- | :--- |
@@ -33,6 +33,9 @@
 | **Explainability** | "Where the points were lost" bars + limiting factor per site. |
 | **Field heritage** | Documented analog/training heritage per site (verify wording against sources before quoting). |
 | **Single source of truth** | `scripts/analog_matching_engine.py` generates `data.js`, JSON and CSV. `assets/js/scoring.js` is the only JS scoring implementation; `tests/parity_test.js` proves JS == Python for all 60 pairs. |
+| **Guided tour** | Spotlight on the panel being explained, step badge and progress bar, Back/Next/End, keyboard support, and a header button that shows the current step. |
+| **Map controls** | "Clear map" removes the yellow scan marker and rover traverse (Esc also clears the scan); saved live scans can be removed with the ✕ on their card. Map legend and hover tooltips added. |
+| **Responsive** | Phone and tablet layouts fixed (no clipped panels, header wraps). |
 | **Offline-ready** | Leaflet, Chart.js and fonts are bundled in `assets/vendor` and `assets/fonts` (map tiles/APIs still need internet; the app degrades gracefully with a notice). |
 | **UX / a11y** | Keyboard-operable cards/tabs/modals (Esc closes), ARIA roles and slider labels, colour-blind-safe A/B chart (solid vs dashed + marker shapes), touch globe, reduced-motion support, larger minimum font, projector scaling, tablet/phone layout fixes, tour auto-starts on first visit. Longitude from map clicks is wrapped to -180..180. |
 
@@ -81,7 +84,7 @@ Credits / licences of bundled components: Leaflet (BSD-2-Clause), Chart.js (MIT)
 
 ## 2. Space Agency Datasets & APIs Used
 
-| Space Agency | Dataset / API Portal | Role in Dark Aero v4.1 Architecture |
+| Space Agency | Dataset / API Portal | Role in Dark Aero v4.2 Architecture |
 | :--- | :--- | :--- |
 | **NASA** | **LRO Diviner Lunar Radiometer** | Polar cryogenic surface temperatures (95 K–112 K), diurnal thermal extremes, and silicate mineralogy indices. |
 | **NASA** | **LRO Mini-RF & LOLA** | S/X-band radar Circular Polarization Ratio (CPR) for regolith blockiness and laser altimetry slope gradients. |

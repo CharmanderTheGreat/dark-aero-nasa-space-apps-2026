@@ -1,5 +1,5 @@
 /**
- * Dark Aero v4.1 - Aerospace Mission Control Controller
+ * Dark Aero v4.2 - Aerospace Mission Control Controller
  * Fixed-Viewport Single-Screen Architecture (100vh)
  * Features:
  * 1. Keyless Esri Orbital Satellite + NASA Worldview GIBS WMTS Map
@@ -15,9 +15,9 @@
 (function () {
   const dataset = window.DARK_AERO_DATA;
   const Scoring = window.DarkAeroScoring;
-  // v41: older saved scans used placeholder (non-measured) slope/roughness values, so they are not restored.
-  const STORAGE_KEY = "dark_aero_v41_custom_scans";
-  const TOUR_SEEN_KEY = "dark_aero_v41_tour_seen";
+  // v42: older saved scans used placeholder (non-measured) slope/roughness values, so they are not restored.
+  const STORAGE_KEY = "dark_aero_v42_custom_scans";
+  const TOUR_SEEN_KEY = "dark_aero_v42_tour_seen";
   const ROBUSTNESS_DRAWS = 2000;
   const prefersReducedMotion =
     window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -497,6 +497,7 @@
 
     clearTraverseBtn.addEventListener("click", () => {
       clearRoverTraverse();
+      clearScanSelection();
     });
 
     enableMapClickController();
@@ -504,6 +505,37 @@
 
   // ---- Live data helpers -----------------------------------------------------
   let scanSequence = 0;
+  const DEFAULT_SCAN_HINT =
+    "Click any coordinate on Earth to fetch live NASA satellite temperature, precip & solar flux.";
+
+  /** Removes the yellow scan marker, cancels any in-flight scan and resets the scanner strip. */
+  function clearScanSelection() {
+    scanSequence++; // invalidates a pending scan so a late response cannot bring the marker back
+    if (customScanMarker && map) map.removeLayer(customScanMarker);
+    customScanMarker = null;
+    lastScannedCandidate = null;
+    const statusText = document.getElementById("scannerStatusText");
+    const addBtn = document.getElementById("addScannedSiteBtn");
+    if (statusText) statusText.textContent = DEFAULT_SCAN_HINT;
+    if (addBtn) addBtn.style.display = "none";
+  }
+
+  /** Deletes a saved live-scan site (memory + localStorage). */
+  function removeSavedScan(id) {
+    const idx = dataset.earth_analogs.findIndex((e) => e.id === id && e.is_live_scan);
+    if (idx === -1) return;
+    dataset.earth_analogs.splice(idx, 1);
+    try {
+      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing.filter((e) => e.id !== id)));
+    } catch (e) {
+      /* storage unavailable */
+    }
+    if (selectedEarthId === id) selectedEarthId = dataset.earth_analogs[0].id;
+    if (compareSiteBId === id) compareSiteBId = dataset.earth_analogs[1].id;
+    populateCompareDropdowns();
+    refreshDashboard(false);
+  }
 
   async function fetchJson(url, timeoutMs) {
     const controller = new AbortController();
@@ -737,13 +769,14 @@
 
     addBtn.addEventListener("click", () => {
       if (!lastScannedCandidate) return;
-      dataset.earth_analogs.push(lastScannedCandidate);
-      selectedEarthId = lastScannedCandidate.id;
-      addBtn.style.display = "none";
+      const saved = lastScannedCandidate;
+      dataset.earth_analogs.push(saved);
+      selectedEarthId = saved.id;
+      clearScanSelection();
 
       try {
         const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        existing.push(lastScannedCandidate);
+        existing.push(saved);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
       } catch (e) {}
 
@@ -1075,6 +1108,7 @@
           <div class="analog-card-header">
             <div class="analog-card-title">#${item.rank} ${item.earth.name}</div>
             <span class="score-badge">${item.scores.overall}%</span>
+            ${item.earth.is_live_scan ? `<button type="button" class="card-remove" title="Remove this saved scan" aria-label="Remove saved scan ${item.earth.name}">&#10005;</button>` : ""}
           </div>
           <div style="font-size:10px; color:#64748b; margin-top:1px;">
             ${item.earth.country} &bull; ${item.earth.elevation_m}m
@@ -1100,6 +1134,14 @@
         map.flyTo(item.earth.coordinates, 6, { duration: 1.0 });
         refreshDashboard(false);
       };
+      const removeBtn = card.querySelector(".card-remove");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          removeSavedScan(item.earth.id);
+        });
+        removeBtn.addEventListener("keydown", (ev) => ev.stopPropagation());
+      }
       card.addEventListener("click", choose);
       card.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter" || ev.key === " ") {
@@ -1168,7 +1210,8 @@
         color: "#06080d",
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.92
+        fillOpacity: 0.92,
+        bubblingMouseEvents: false
       });
 
       circle.bindTooltip(`#${idx + 1} ${shortName(item.earth.name)} · ${item.scores.overall}%`, { direction: "top", offset: [0, -6] });
@@ -1736,14 +1779,16 @@
     setupMethodologyModal();
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
+        const openModals = document.querySelectorAll(".modal-backdrop.open");
+        if (openModals.length) openModals.forEach((m) => m.classList.remove("open"));
+        else if (!document.body.classList.contains("tour-active") && customScanMarker) clearScanSelection();
       }
     });
 
     document.getElementById("exportJsonBtn").addEventListener("click", () => {
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
       const report = {
-        generated_by: "Dark Aero Planetary Analog Decision Support System v4.1",
+        generated_by: "Dark Aero Planetary Analog Decision Support System v4.2",
         scoring_version: dataset.scoring_version,
         weight_robustness: Scoring.weightRobustness(target, dataset.earth_analogs, ROBUSTNESS_DRAWS),
         target_base: target,
@@ -1768,7 +1813,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dark_aero_${currentTargetId}_mission_report_v4.json`;
+      a.download = `dark_aero_${currentTargetId}_mission_report_v4.2.json`;
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -1818,7 +1863,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "dark_aero_analog_comparison_matrix_v4.csv";
+      a.download = "dark_aero_analog_comparison_matrix_v4.2.csv";
       a.click();
       URL.revokeObjectURL(url);
     });

@@ -1,5 +1,5 @@
 /**
- * Dark Aero v4.1 - Shared scoring engine (browser + Node).
+ * Dark Aero v4.2 - Shared scoring engine (browser + Node).
  *
  * This file is the single JS implementation of the similarity maths. The Python engine
  * (scripts/analog_matching_engine.py) implements the SAME formulas, and

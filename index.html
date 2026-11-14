@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Aero v4.1 | Planetary Analog Mission Control</title>
+  <title>Dark Aero v4.2 | Planetary Analog Mission Control</title>
   <!-- Self-hosted fonts + Leaflet (bundled locally so the console loads without internet) -->
-  <link rel="stylesheet" href="assets/css/fonts.css" />
+  <link rel="stylesheet" href="assets/css/fonts.css?v=4.2" />
   <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" />
   <!-- Custom Obsidian Aerospace Stylesheet -->
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=4.2" />
 </head>
 <body>
   <!-- Fixed Top Mission Control Navigation Bar -->
@@ -17,7 +17,7 @@
       <span class="brand-badge">DARK AERO</span>
       <div class="brand-title">
         <h1>Planetary Analog Decision Support</h1>
-        <span class="version-tag">v4.1</span>
+        <span class="version-tag">v4.2</span>
         <span class="brand-subtitle">NASA Space Apps 2026 &bull; Moon &amp; Mars Analog Suite</span>
       </div>
     </div>
@@ -130,8 +130,8 @@
             <button id="toggleTraverseBtn" class="btn-action" style="padding:2px 7px; font-size:9.5px;">
               Plot Rover Traverse
             </button>
-            <button id="clearTraverseBtn" class="btn-action" style="padding:2px 6px; font-size:9.5px;">
-              Clear
+            <button id="clearTraverseBtn" class="btn-action" style="padding:2px 6px; font-size:9.5px;" title="Remove the yellow scan marker and the rover traverse (Esc also clears the scan)">
+              Clear map
             </button>
           </div>
         </div>
@@ -489,9 +489,9 @@
   <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
 
   <!-- Application Data, SAR Lab & Mission Control Logic -->
-  <script src="assets/js/data.js"></script>
-  <script src="assets/js/scoring.js"></script>
-  <script src="assets/js/sar-lab.js"></script>
-  <script src="assets/js/app.js"></script>
+  <script src="assets/js/data.js?v=4.2"></script>
+  <script src="assets/js/scoring.js?v=4.2"></script>
+  <script src="assets/js/sar-lab.js?v=4.2"></script>
+  <script src="assets/js/app.js?v=4.2"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 """
-Dark Aero - Multi-Agency Planetary Analog Matching Engine (v4.1)
+Dark Aero - Multi-Agency Planetary Analog Matching Engine (v4.2)
 2026 NASA International Space Apps Challenge
 Challenge: Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars
 
@@ -490,7 +490,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
     ]
 
 
-SCORING_VERSION = "4.1"
+SCORING_VERSION = "4.2"
 
 # Field heritage of each Earth analog. Wording is intentionally conservative:
 # please double-check each line against its primary source before quoting it in the pitch.
@@ -570,7 +570,7 @@ def export_datasets(output_dir: str, js_path: str = None):
     analogs = get_earth_analogs()
 
     payload = {
-        "project": "Dark Aero - Planetary Analog Decision Support System (v4.1 Mission Control)",
+        "project": "Dark Aero - Planetary Analog Decision Support System (v4.2 Mission Control)",
         "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
         "event": "2026 NASA International Space Apps Challenge",
         "scoring_version": SCORING_VERSION,
