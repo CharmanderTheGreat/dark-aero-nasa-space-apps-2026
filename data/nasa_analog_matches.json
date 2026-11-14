@@ -1,7 +1,8 @@
 {
-  "project": "Dark Aero - Planetary Analog Decision Support System (v4.0 Mission Control)",
+  "project": "Dark Aero - Planetary Analog Decision Support System (v4.1 Mission Control)",
   "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
   "event": "2026 NASA International Space Apps Challenge",
+  "scoring_version": "4.1",
   "default_weights": {
     "geology": 0.25,
     "roughness": 0.2,
@@ -10,6 +11,145 @@
     "aridity": 0.15,
     "ice": 0.1
   },
+  "parameter_methodology": [
+    {
+      "key": "geology",
+      "label": "Basalt & Silicate Geology",
+      "range": "0-1 index",
+      "target_source": "LRO Diviner silicate index / M3 / CRISM mineralogy",
+      "earth_source": "Sentinel-2 / ASTER band ratios + USGS spectral library",
+      "similarity": "1 - |target - earth|",
+      "status": "curated"
+    },
+    {
+      "key": "roughness",
+      "label": "SAR Roughness vs CPR",
+      "range": "0-1 index",
+      "target_source": "LRO Mini-RF circular polarization ratio (CPR)",
+      "earth_source": "RADARSAT-1 / RCM C-band HH/HV backscatter (SAR Lab converts dB to 0-1 roughness)",
+      "similarity": "1 - |CPR - roughness|",
+      "status": "curated"
+    },
+    {
+      "key": "slope",
+      "label": "Terrain Slope",
+      "range": "degrees",
+      "target_source": "LOLA / MOLA topography",
+      "earth_source": "ASTER GDEM / SRTM DEM",
+      "similarity": "1 - |delta| / 25 deg",
+      "status": "curated"
+    },
+    {
+      "key": "thermal",
+      "label": "Thermal Regime",
+      "range": "kelvin",
+      "target_source": "LRO Diviner / Mars MEDA mean + diurnal extremes",
+      "earth_source": "MODIS land-surface temperature (mean + day/night extremes)",
+      "similarity": "0.6 x mean-temp match (220 K range) + 0.4 x diurnal-swing match (200 K range)",
+      "status": "curated"
+    },
+    {
+      "key": "aridity",
+      "label": "Hyper-Aridity",
+      "range": "0-1 index",
+      "target_source": "Atmosphere / water-activity assumption (airless Moon = 1.0)",
+      "earth_source": "Annual precipitation (JAXA GPM / NASA POWER) mapped to an index",
+      "similarity": "1 - |target - earth|",
+      "status": "curated"
+    },
+    {
+      "key": "ice",
+      "label": "Subsurface Ice",
+      "range": "0-1 index",
+      "target_source": "LEND neutron data (Moon), SHARAD radar (Mars)",
+      "earth_source": "Permafrost / glacier presence literature",
+      "similarity": "1 - |target - earth|",
+      "status": "curated"
+    }
+  ],
+  "limitations": [
+    "Similarity is not equivalence: Earth analogs cannot reproduce vacuum, radiation, lunar/Martian gravity (every Earth site is 9.81 m/s2 vs 1.62 / 3.72) or perchlorate chemistry.",
+    "The six indices for the 10 curated sites are analyst-assigned from published agency products. They are not recomputed from raw rasters in this app. Treat them as a transparent starting point, not a survey.",
+    "Live NASA POWER scans measure temperature, precipitation and diurnal range for real; slope and elevation come from a ~90 m DEM sampled ~1 km around the click; geology and SAR roughness are assumptions and are labelled as such.",
+    "The Hardware & Rover Stress Simulator and rover-traverse energy numbers are illustrative engineering heuristics, not validated vehicle models.",
+    "Weights are subjective. The Weight Robustness panel shows how often each site stays #1 when weights are varied randomly.",
+    "Scores compare six parameters only; logistics, permits, season windows and safety are not modelled.",
+    "Esri imagery, OpenTopoMap and the Open-Meteo elevation service are non-U.S.-Government services governed by their own terms; NASA does not endorse them."
+  ],
+  "official_resources": [
+    {
+      "agency": "NASA",
+      "name": "Earthdata Search",
+      "integration": "reference",
+      "use": "Discovery of MODIS LST / ASTER products behind the curated thermal and slope values."
+    },
+    {
+      "agency": "NASA",
+      "name": "Worldview (GIBS)",
+      "integration": "live",
+      "use": "Map overlays: MODIS true colour, Blue Marble, land-surface temperature."
+    },
+    {
+      "agency": "NASA",
+      "name": "Planetary Data System (PDS)",
+      "integration": "reference",
+      "use": "Mars target values (MEDA, CRISM, MOLA, SHARAD)."
+    },
+    {
+      "agency": "NASA",
+      "name": "Lunar Reconnaissance Orbiter (LRO)",
+      "integration": "reference",
+      "use": "Lunar target values: LOLA slope, Mini-RF CPR, LEND ice."
+    },
+    {
+      "agency": "NASA",
+      "name": "LRO Diviner",
+      "integration": "reference",
+      "use": "Lunar polar temperatures and day/night extremes used in the thermal score."
+    },
+    {
+      "agency": "CSA",
+      "name": "RADARSAT Constellation Mission (RCM)",
+      "integration": "reference",
+      "use": "C-band SAR basis for the roughness index and SAR Lab."
+    },
+    {
+      "agency": "CSA",
+      "name": "RADARSAT-1 data",
+      "integration": "reference",
+      "use": "Open-licence SAR archive behind the Arctic crater / lava-field roughness values."
+    },
+    {
+      "agency": "CSA",
+      "name": "SAR Python Tutorial",
+      "integration": "reference",
+      "use": "Method reference for the HH/HV backscatter to roughness workflow (scripts/sar_roughness_analyzer.py)."
+    },
+    {
+      "agency": "ESA",
+      "name": "Copernicus Data Space Ecosystem",
+      "integration": "live",
+      "use": "Copernicus GLO-90 DEM (via Open-Meteo) for live elevation and slope; Sentinel-1/2 inform curated indices."
+    },
+    {
+      "agency": "ESA",
+      "name": "Open Science Catalog",
+      "integration": "reference",
+      "use": "Dataset discovery for geology / surface-roughness products."
+    },
+    {
+      "agency": "JAXA",
+      "name": "G-Portal",
+      "integration": "reference",
+      "use": "Precipitation and cryosphere records behind the aridity and ice indices."
+    },
+    {
+      "agency": "NASA",
+      "name": "POWER (Langley) - not on the challenge list",
+      "integration": "live",
+      "use": "Live scan: skin temperature, day/night range, precipitation."
+    }
+  ],
   "target_bases": [
     {
       "id": "shackleton_crater",
@@ -128,7 +268,7 @@
       "id": "arcadia_planitia",
       "name": "Arcadia Planitia Glacial Plains",
       "body": "Mars",
-      "region": "Northern Lowlands (46.7\u00b0N, 188.0\u00b0E)",
+      "region": "Northern Lowlands (46.7\u00b0N, 172.0\u00b0W)",
       "coordinates": [
         46.7,
         -172.0
@@ -216,58 +356,59 @@
       ],
       "geological_summary": "High-Arctic polar desert impact structure featuring continuous permafrost, impact-brecciated gneiss, and zero vegetation.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Home of the NASA-supported Haughton-Mars Project (since 1997): long-running Moon/Mars field simulations, EVA and rover trials.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 84.9,
+          "overall_match_pct": 85.2,
           "geology_pct": 98.0,
           "roughness_pct": 98.0,
           "slope_pct": 95.2,
-          "thermal_pct": 26.3,
+          "thermal_pct": 28.3,
           "aridity_pct": 86.0,
           "ice_pct": 97.0
         },
         "malapert_massif": {
-          "overall_match_pct": 84.3,
+          "overall_match_pct": 84.1,
           "geology_pct": 98.0,
           "roughness_pct": 94.0,
           "slope_pct": 93.6,
-          "thermal_pct": 34.0,
+          "thermal_pct": 32.7,
           "aridity_pct": 86.0,
           "ice_pct": 90.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 80.5,
+          "overall_match_pct": 74.7,
           "geology_pct": 80.0,
           "roughness_pct": 89.0,
           "slope_pct": 83.2,
-          "thermal_pct": 96.8,
+          "thermal_pct": 58.1,
           "aridity_pct": 86.0,
           "ice_pct": 28.0
         },
         "jezero_crater": {
-          "overall_match_pct": 81.4,
+          "overall_match_pct": 80.9,
           "geology_pct": 88.0,
           "roughness_pct": 88.0,
           "slope_pct": 76.8,
-          "thermal_pct": 78.6,
+          "thermal_pct": 75.2,
           "aridity_pct": 88.0,
           "ice_pct": 53.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 82.8,
+          "overall_match_pct": 82.6,
           "geology_pct": 94.0,
           "roughness_pct": 82.0,
           "slope_pct": 58.0,
-          "thermal_pct": 71.8,
+          "thermal_pct": 70.5,
           "aridity_pct": 91.0,
           "ice_pct": 98.0
         },
         "valles_marineris": {
-          "overall_match_pct": 85.3,
+          "overall_match_pct": 84.2,
           "geology_pct": 85.0,
           "roughness_pct": 94.0,
           "slope_pct": 86.0,
-          "thermal_pct": 84.9,
+          "thermal_pct": 77.7,
           "aridity_pct": 89.0,
           "ice_pct": 63.0
         }
@@ -306,58 +447,59 @@
       ],
       "geological_summary": "Hyper-arid polar valley with shallow ice-cemented permafrost topped by dry regolith, closely mirroring lunar polar craters and Martian northern plains.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",
+      "heritage": "Widely studied Mars cold-desert analog: ice-cemented permafrost, extreme aridity and sparse microbial life.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 86.6,
+          "overall_match_pct": 86.8,
           "geology_pct": 99.0,
           "roughness_pct": 94.0,
           "slope_pct": 93.2,
-          "thermal_pct": 29.5,
+          "thermal_pct": 30.9,
           "aridity_pct": 98.0,
           "ice_pct": 99.0
         },
         "malapert_massif": {
-          "overall_match_pct": 86.6,
+          "overall_match_pct": 86.3,
           "geology_pct": 95.0,
           "roughness_pct": 98.0,
           "slope_pct": 95.6,
-          "thermal_pct": 37.2,
+          "thermal_pct": 35.3,
           "aridity_pct": 98.0,
           "ice_pct": 86.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 82.6,
+          "overall_match_pct": 76.6,
           "geology_pct": 83.0,
           "roughness_pct": 85.0,
           "slope_pct": 85.2,
-          "thermal_pct": 99.9,
+          "thermal_pct": 60.0,
           "aridity_pct": 98.0,
           "ice_pct": 24.0
         },
         "jezero_crater": {
-          "overall_match_pct": 85.1,
+          "overall_match_pct": 84.5,
           "geology_pct": 91.0,
           "roughness_pct": 92.0,
           "slope_pct": 78.8,
-          "thermal_pct": 81.8,
+          "thermal_pct": 77.8,
           "aridity_pct": 100.0,
           "ice_pct": 49.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 86.0,
+          "overall_match_pct": 85.8,
           "geology_pct": 97.0,
           "roughness_pct": 86.0,
           "slope_pct": 60.0,
-          "thermal_pct": 74.9,
+          "thermal_pct": 73.2,
           "aridity_pct": 97.0,
           "ice_pct": 98.0
         },
         "valles_marineris": {
-          "overall_match_pct": 86.6,
+          "overall_match_pct": 85.4,
           "geology_pct": 88.0,
           "roughness_pct": 90.0,
           "slope_pct": 84.0,
-          "thermal_pct": 88.1,
+          "thermal_pct": 80.3,
           "aridity_pct": 99.0,
           "ice_pct": 59.0
         }
@@ -396,58 +538,59 @@
       ],
       "geological_summary": "Earth's driest non-polar desert containing perchlorate-rich soils, sulfate crusts, and alluvial fan deltas analogous to Jezero Crater.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Hyper-arid Mars analog hosting NASA-funded rover and subsurface-drilling astrobiology field trials.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 71.1,
+          "overall_match_pct": 72.6,
           "geology_pct": 91.0,
           "roughness_pct": 87.0,
           "slope_pct": 70.4,
-          "thermal_pct": 12.2,
+          "thermal_pct": 22.0,
           "aridity_pct": 99.0,
           "ice_pct": 37.0
         },
         "malapert_massif": {
-          "overall_match_pct": 75.8,
+          "overall_match_pct": 76.8,
           "geology_pct": 87.0,
           "roughness_pct": 95.0,
           "slope_pct": 81.6,
-          "thermal_pct": 19.9,
+          "thermal_pct": 26.5,
           "aridity_pct": 99.0,
           "ice_pct": 50.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 88.2,
+          "overall_match_pct": 83.2,
           "geology_pct": 91.0,
           "roughness_pct": 78.0,
           "slope_pct": 92.0,
-          "thermal_pct": 82.7,
+          "thermal_pct": 49.6,
           "aridity_pct": 99.0,
           "ice_pct": 88.0
         },
         "jezero_crater": {
-          "overall_match_pct": 92.5,
+          "overall_match_pct": 93.2,
           "geology_pct": 99.0,
           "roughness_pct": 99.0,
           "slope_pct": 98.4,
-          "thermal_pct": 64.5,
+          "thermal_pct": 69.0,
           "aridity_pct": 99.0,
           "ice_pct": 87.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 81.6,
+          "overall_match_pct": 82.6,
           "geology_pct": 95.0,
           "roughness_pct": 93.0,
           "slope_pct": 82.8,
-          "thermal_pct": 57.7,
+          "thermal_pct": 64.3,
           "aridity_pct": 96.0,
           "ice_pct": 38.0
         },
         "valles_marineris": {
-          "overall_match_pct": 82.8,
+          "overall_match_pct": 82.9,
           "geology_pct": 96.0,
           "roughness_pct": 83.0,
           "slope_pct": 61.2,
-          "thermal_pct": 70.8,
+          "thermal_pct": 71.4,
           "aridity_pct": 98.0,
           "ice_pct": 77.0
         }
@@ -485,31 +628,32 @@
       ],
       "geological_summary": "Unweathered tholeiitic basalt lava flows and intact volcanic skylight lava tubes matching lunar mare and Martian shield volcanoes.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Hawaiian basaltic shield terrain; the HI-SEAS simulated-habitat site is on its slopes.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 67.7,
+          "overall_match_pct": 68.6,
           "geology_pct": 81.0,
           "roughness_pct": 92.0,
           "slope_pct": 84.0,
-          "thermal_pct": 15.8,
+          "thermal_pct": 21.4,
           "aridity_pct": 74.0,
           "ice_pct": 30.0
         },
         "malapert_massif": {
-          "overall_match_pct": 69.3,
+          "overall_match_pct": 69.6,
           "geology_pct": 77.0,
           "roughness_pct": 84.0,
           "slope_pct": 95.2,
-          "thermal_pct": 23.6,
+          "thermal_pct": 25.8,
           "aridity_pct": 74.0,
           "ice_pct": 43.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 92.3,
+          "overall_match_pct": 87.1,
           "geology_pct": 99.0,
           "roughness_pct": 99.0,
           "slope_pct": 94.4,
-          "thermal_pct": 86.3,
+          "thermal_pct": 51.8,
           "aridity_pct": 74.0,
           "ice_pct": 95.0
         },
@@ -518,25 +662,25 @@
           "geology_pct": 91.0,
           "roughness_pct": 78.0,
           "slope_pct": 88.0,
-          "thermal_pct": 68.1,
+          "thermal_pct": 68.4,
           "aridity_pct": 76.0,
           "ice_pct": 80.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 70.2,
+          "overall_match_pct": 70.5,
           "geology_pct": 85.0,
           "roughness_pct": 72.0,
           "slope_pct": 69.2,
-          "thermal_pct": 61.3,
+          "thermal_pct": 63.7,
           "aridity_pct": 79.0,
           "ice_pct": 31.0
         },
         "valles_marineris": {
-          "overall_match_pct": 83.6,
+          "overall_match_pct": 83.1,
           "geology_pct": 94.0,
           "roughness_pct": 96.0,
           "slope_pct": 74.8,
-          "thermal_pct": 74.5,
+          "thermal_pct": 70.8,
           "aridity_pct": 77.0,
           "ice_pct": 70.0
         }
@@ -574,13 +718,14 @@
       ],
       "geological_summary": "Subarctic basaltic sand sheet and fresh lava plain interacting with glacial permafrost and windblown volcanic tephra.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Iceland's Askja region was used for Apollo-era astronaut geology training; Holuhraun (2014) is studied as a fresh basalt-flow analog.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 74.9,
+          "overall_match_pct": 75.4,
           "geology_pct": 83.0,
           "roughness_pct": 95.0,
           "slope_pct": 76.8,
-          "thermal_pct": 19.9,
+          "thermal_pct": 23.5,
           "aridity_pct": 78.0,
           "ice_pct": 89.0
         },
@@ -589,25 +734,25 @@
           "geology_pct": 79.0,
           "roughness_pct": 87.0,
           "slope_pct": 88.0,
-          "thermal_pct": 27.7,
+          "thermal_pct": 27.9,
           "aridity_pct": 78.0,
           "ice_pct": 98.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 87.6,
+          "overall_match_pct": 82.1,
           "geology_pct": 99.0,
           "roughness_pct": 96.0,
           "slope_pct": 98.4,
-          "thermal_pct": 90.4,
+          "thermal_pct": 54.2,
           "aridity_pct": 78.0,
           "ice_pct": 36.0
         },
         "jezero_crater": {
-          "overall_match_pct": 82.7,
+          "overall_match_pct": 82.4,
           "geology_pct": 93.0,
           "roughness_pct": 81.0,
           "slope_pct": 95.2,
-          "thermal_pct": 72.2,
+          "thermal_pct": 70.4,
           "aridity_pct": 80.0,
           "ice_pct": 61.0
         },
@@ -616,16 +761,16 @@
           "geology_pct": 87.0,
           "roughness_pct": 75.0,
           "slope_pct": 76.4,
-          "thermal_pct": 65.4,
+          "thermal_pct": 65.7,
           "aridity_pct": 83.0,
           "ice_pct": 90.0
         },
         "valles_marineris": {
-          "overall_match_pct": 85.0,
+          "overall_match_pct": 84.1,
           "geology_pct": 96.0,
           "roughness_pct": 99.0,
           "slope_pct": 67.6,
-          "thermal_pct": 78.6,
+          "thermal_pct": 72.8,
           "aridity_pct": 81.0,
           "ice_pct": 71.0
         }
@@ -663,58 +808,59 @@
       ],
       "geological_summary": "High-latitude mountainous terrain with gypsum-anhydrite diapirs, sub-zero saline springs, and rugged polar slopes.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",
+      "heritage": "High-Arctic Mars analog with long-running research campaigns (e.g. McGill Arctic Research Station); permafrost, ice and spring systems.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 85.2,
+          "overall_match_pct": 85.4,
           "geology_pct": 95.0,
           "roughness_pct": 96.0,
           "slope_pct": 99.2,
-          "thermal_pct": 27.7,
+          "thermal_pct": 29.1,
           "aridity_pct": 89.0,
           "ice_pct": 99.0
         },
         "malapert_massif": {
-          "overall_match_pct": 84.8,
+          "overall_match_pct": 84.6,
           "geology_pct": 99.0,
           "roughness_pct": 96.0,
           "slope_pct": 89.6,
-          "thermal_pct": 35.4,
+          "thermal_pct": 33.5,
           "aridity_pct": 89.0,
           "ice_pct": 88.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 79.2,
+          "overall_match_pct": 73.3,
           "geology_pct": 77.0,
           "roughness_pct": 87.0,
           "slope_pct": 79.2,
-          "thermal_pct": 98.1,
+          "thermal_pct": 58.9,
           "aridity_pct": 89.0,
           "ice_pct": 26.0
         },
         "jezero_crater": {
-          "overall_match_pct": 80.9,
+          "overall_match_pct": 80.3,
           "geology_pct": 85.0,
           "roughness_pct": 90.0,
           "slope_pct": 72.8,
-          "thermal_pct": 79.9,
+          "thermal_pct": 76.1,
           "aridity_pct": 91.0,
           "ice_pct": 51.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 82.7,
+          "overall_match_pct": 82.5,
           "geology_pct": 91.0,
           "roughness_pct": 84.0,
           "slope_pct": 54.0,
-          "thermal_pct": 73.1,
+          "thermal_pct": 71.4,
           "aridity_pct": 94.0,
           "ice_pct": 100.0
         },
         "valles_marineris": {
-          "overall_match_pct": 85.2,
+          "overall_match_pct": 84.1,
           "geology_pct": 82.0,
           "roughness_pct": 92.0,
           "slope_pct": 90.0,
-          "thermal_pct": 86.3,
+          "thermal_pct": 78.5,
           "aridity_pct": 92.0,
           "ice_pct": 61.0
         }
@@ -752,58 +898,59 @@
       ],
       "geological_summary": "Iron- and sulfate-rich geochemical environment producing jarosite and hematite precipitates identical to Martian sedimentary basins.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Acidic iron/sulfate system studied for Mars mineralogy; site of the MARTE drilling and life-detection analog project.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 67.6,
+          "overall_match_pct": 68.8,
           "geology_pct": 95.0,
           "roughness_pct": 83.0,
           "slope_pct": 73.2,
-          "thermal_pct": 10.8,
+          "thermal_pct": 18.8,
           "aridity_pct": 82.0,
           "ice_pct": 23.0
         },
         "malapert_massif": {
-          "overall_match_pct": 72.3,
+          "overall_match_pct": 73.0,
           "geology_pct": 91.0,
           "roughness_pct": 91.0,
           "slope_pct": 84.4,
-          "thermal_pct": 18.6,
+          "thermal_pct": 23.2,
           "aridity_pct": 82.0,
           "ice_pct": 36.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 85.1,
+          "overall_match_pct": 80.2,
           "geology_pct": 87.0,
           "roughness_pct": 74.0,
           "slope_pct": 94.8,
-          "thermal_pct": 81.3,
+          "thermal_pct": 48.8,
           "aridity_pct": 82.0,
           "ice_pct": 98.0
         },
         "jezero_crater": {
-          "overall_match_pct": 87.3,
+          "overall_match_pct": 87.7,
           "geology_pct": 95.0,
           "roughness_pct": 97.0,
           "slope_pct": 98.8,
-          "thermal_pct": 63.1,
+          "thermal_pct": 65.8,
           "aridity_pct": 84.0,
           "ice_pct": 73.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 80.0,
+          "overall_match_pct": 80.8,
           "geology_pct": 99.0,
           "roughness_pct": 97.0,
           "slope_pct": 80.0,
-          "thermal_pct": 56.3,
+          "thermal_pct": 61.1,
           "aridity_pct": 87.0,
           "ice_pct": 24.0
         },
         "valles_marineris": {
-          "overall_match_pct": 77.9,
+          "overall_match_pct": 77.7,
           "geology_pct": 92.0,
           "roughness_pct": 79.0,
           "slope_pct": 64.0,
-          "thermal_pct": 69.5,
+          "thermal_pct": 68.2,
           "aridity_pct": 85.0,
           "ice_pct": 63.0
         }
@@ -841,49 +988,50 @@
       ],
       "geological_summary": "Basaltic phreatomagmatic maar crater with steep pyroclastic rims and mantle xenoliths used directly for NASA Artemis astronaut training.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Volcanic maar crater in New Mexico, studied for planetary-geology analog work (maar craters, mantle xenoliths).",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 74.4,
+          "overall_match_pct": 75.7,
           "geology_pct": 87.0,
           "roughness_pct": 99.0,
           "slope_pct": 98.4,
-          "thermal_pct": 11.3,
+          "thermal_pct": 20.6,
           "aridity_pct": 91.0,
           "ice_pct": 27.0
         },
         "malapert_massif": {
-          "overall_match_pct": 73.0,
+          "overall_match_pct": 73.9,
           "geology_pct": 83.0,
           "roughness_pct": 91.0,
           "slope_pct": 90.4,
-          "thermal_pct": 19.0,
+          "thermal_pct": 25.0,
           "aridity_pct": 91.0,
           "ice_pct": 40.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 89.9,
+          "overall_match_pct": 85.0,
           "geology_pct": 95.0,
           "roughness_pct": 92.0,
           "slope_pct": 80.0,
-          "thermal_pct": 81.8,
+          "thermal_pct": 49.1,
           "aridity_pct": 91.0,
           "ice_pct": 98.0
         },
         "jezero_crater": {
-          "overall_match_pct": 83.5,
+          "overall_match_pct": 84.1,
           "geology_pct": 97.0,
           "roughness_pct": 85.0,
           "slope_pct": 73.6,
-          "thermal_pct": 63.6,
+          "thermal_pct": 67.5,
           "aridity_pct": 93.0,
           "ice_pct": 77.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 72.5,
+          "overall_match_pct": 73.4,
           "geology_pct": 91.0,
           "roughness_pct": 79.0,
           "slope_pct": 54.8,
-          "thermal_pct": 56.8,
+          "thermal_pct": 62.9,
           "aridity_pct": 96.0,
           "ice_pct": 28.0
         },
@@ -892,7 +1040,7 @@
           "geology_pct": 100.0,
           "roughness_pct": 97.0,
           "slope_pct": 89.2,
-          "thermal_pct": 69.9,
+          "thermal_pct": 70.0,
           "aridity_pct": 94.0,
           "ice_pct": 67.0
         }
@@ -930,58 +1078,59 @@
       ],
       "geological_summary": "High-elevation hyper-arid basin on the Tibetan Plateau featuring wind-sculpted yardangs, polygons, and cold desert evaporites.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
+      "heritage": "Hyper-arid, saline, wind-eroded basin widely studied as a Mars analog (yardangs, evaporites).",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 74.3,
+          "overall_match_pct": 75.3,
           "geology_pct": 97.0,
           "roughness_pct": 82.0,
           "slope_pct": 60.0,
-          "thermal_pct": 18.6,
+          "thermal_pct": 25.2,
           "aridity_pct": 97.0,
           "ice_pct": 73.0
         },
         "malapert_massif": {
-          "overall_match_pct": 79.0,
+          "overall_match_pct": 79.5,
           "geology_pct": 93.0,
           "roughness_pct": 90.0,
           "slope_pct": 71.2,
-          "thermal_pct": 26.3,
+          "thermal_pct": 29.7,
           "aridity_pct": 97.0,
           "ice_pct": 86.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 81.2,
+          "overall_match_pct": 75.9,
           "geology_pct": 85.0,
           "roughness_pct": 73.0,
           "slope_pct": 81.6,
-          "thermal_pct": 89.0,
+          "thermal_pct": 53.4,
           "aridity_pct": 97.0,
           "ice_pct": 52.0
         },
         "jezero_crater": {
-          "overall_match_pct": 88.8,
+          "overall_match_pct": 89.0,
           "geology_pct": 93.0,
           "roughness_pct": 96.0,
           "slope_pct": 88.0,
-          "thermal_pct": 70.8,
+          "thermal_pct": 72.2,
           "aridity_pct": 99.0,
           "ice_pct": 77.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 90.0,
+          "overall_match_pct": 90.6,
           "geology_pct": 99.0,
           "roughness_pct": 98.0,
           "slope_pct": 93.2,
-          "thermal_pct": 64.0,
+          "thermal_pct": 67.5,
           "aridity_pct": 98.0,
           "ice_pct": 74.0
         },
         "valles_marineris": {
-          "overall_match_pct": 81.0,
+          "overall_match_pct": 80.6,
           "geology_pct": 90.0,
           "roughness_pct": 78.0,
           "slope_pct": 50.8,
-          "thermal_pct": 77.2,
+          "thermal_pct": 74.6,
           "aridity_pct": 100.0,
           "ice_pct": 87.0
         }
@@ -1019,58 +1168,59 @@
       ],
       "geological_summary": "Active continental rift basin with basaltic shield volcanism, steep tectonic grabens, and polyextreme hydrothermal evaporites.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",
+      "heritage": "Basaltic rift / hydrothermal-evaporite system studied as a Mars and early-Earth analog.",
       "matches": {
         "shackleton_crater": {
-          "overall_match_pct": 71.5,
+          "overall_match_pct": 73.2,
           "geology_pct": 85.0,
           "roughness_pct": 97.0,
           "slope_pct": 96.0,
-          "thermal_pct": 3.6,
+          "thermal_pct": 14.9,
           "aridity_pct": 96.0,
           "ice_pct": 15.0
         },
         "malapert_massif": {
-          "overall_match_pct": 69.7,
+          "overall_match_pct": 70.9,
           "geology_pct": 81.0,
           "roughness_pct": 89.0,
           "slope_pct": 84.8,
-          "thermal_pct": 11.3,
+          "thermal_pct": 19.4,
           "aridity_pct": 96.0,
           "ice_pct": 28.0
         },
         "aristarchus_plateau": {
-          "overall_match_pct": 88.7,
+          "overall_match_pct": 84.3,
           "geology_pct": 97.0,
           "roughness_pct": 94.0,
           "slope_pct": 74.4,
-          "thermal_pct": 74.0,
+          "thermal_pct": 44.4,
           "aridity_pct": 96.0,
           "ice_pct": 90.0
         },
         "jezero_crater": {
-          "overall_match_pct": 80.1,
+          "overall_match_pct": 81.0,
           "geology_pct": 95.0,
           "roughness_pct": 83.0,
           "slope_pct": 68.0,
-          "thermal_pct": 55.8,
+          "thermal_pct": 61.9,
           "aridity_pct": 98.0,
           "ice_pct": 65.0
         },
         "arcadia_planitia": {
-          "overall_match_pct": 68.8,
+          "overall_match_pct": 70.1,
           "geology_pct": 89.0,
           "roughness_pct": 77.0,
           "slope_pct": 49.2,
-          "thermal_pct": 49.0,
+          "thermal_pct": 57.2,
           "aridity_pct": 99.0,
           "ice_pct": 16.0
         },
         "valles_marineris": {
-          "overall_match_pct": 88.2,
+          "overall_match_pct": 88.5,
           "geology_pct": 98.0,
           "roughness_pct": 99.0,
           "slope_pct": 94.8,
-          "thermal_pct": 62.2,
+          "thermal_pct": 64.3,
           "aridity_pct": 99.0,
           "ice_pct": 55.0
         }
@@ -1082,158 +1232,169 @@
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 86.6,
+        "overall_match_pct": 86.8,
         "geology_pct": 99.0,
         "roughness_pct": 94.0,
         "slope_pct": 93.2,
-        "thermal_pct": 29.5,
+        "thermal_pct": 30.9,
         "aridity_pct": 98.0,
         "ice_pct": 99.0
       },
       {
         "earth_id": "axel_heiberg",
         "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 85.2,
+        "overall_match_pct": 85.4,
         "geology_pct": 95.0,
         "roughness_pct": 96.0,
         "slope_pct": 99.2,
-        "thermal_pct": 27.7,
+        "thermal_pct": 29.1,
         "aridity_pct": 89.0,
         "ice_pct": 99.0
       },
       {
         "earth_id": "devon_island",
         "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 84.9,
+        "overall_match_pct": 85.2,
         "geology_pct": 98.0,
         "roughness_pct": 98.0,
         "slope_pct": 95.2,
-        "thermal_pct": 26.3,
+        "thermal_pct": 28.3,
         "aridity_pct": 86.0,
         "ice_pct": 97.0
       },
       {
-        "earth_id": "holuhraun_iceland",
-        "earth_name": "Holuhraun & Askja Highland Lava Field",
-        "overall_match_pct": 74.9,
-        "geology_pct": 83.0,
-        "roughness_pct": 95.0,
-        "slope_pct": 76.8,
-        "thermal_pct": 19.9,
-        "aridity_pct": 78.0,
-        "ice_pct": 89.0
-      },
-      {
         "earth_id": "kilbourne_hole",
         "earth_name": "Kilbourne Hole Maar Volcanic Crater",
-        "overall_match_pct": 74.4,
+        "overall_match_pct": 75.7,
         "geology_pct": 87.0,
         "roughness_pct": 99.0,
         "slope_pct": 98.4,
-        "thermal_pct": 11.3,
+        "thermal_pct": 20.6,
         "aridity_pct": 91.0,
         "ice_pct": 27.0
       },
       {
+        "earth_id": "holuhraun_iceland",
+        "earth_name": "Holuhraun & Askja Highland Lava Field",
+        "overall_match_pct": 75.4,
+        "geology_pct": 83.0,
+        "roughness_pct": 95.0,
+        "slope_pct": 76.8,
+        "thermal_pct": 23.5,
+        "aridity_pct": 78.0,
+        "ice_pct": 89.0
+      },
+      {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 74.3,
+        "overall_match_pct": 75.3,
         "geology_pct": 97.0,
         "roughness_pct": 82.0,
         "slope_pct": 60.0,
-        "thermal_pct": 18.6,
+        "thermal_pct": 25.2,
         "aridity_pct": 97.0,
         "ice_pct": 73.0
       },
       {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 71.5,
+        "overall_match_pct": 73.2,
         "geology_pct": 85.0,
         "roughness_pct": 97.0,
         "slope_pct": 96.0,
-        "thermal_pct": 3.6,
+        "thermal_pct": 14.9,
         "aridity_pct": 96.0,
         "ice_pct": 15.0
       },
       {
         "earth_id": "atacama_desert",
         "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 71.1,
+        "overall_match_pct": 72.6,
         "geology_pct": 91.0,
         "roughness_pct": 87.0,
         "slope_pct": 70.4,
-        "thermal_pct": 12.2,
+        "thermal_pct": 22.0,
         "aridity_pct": 99.0,
         "ice_pct": 37.0
       },
       {
-        "earth_id": "mauna_loa",
-        "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
-        "overall_match_pct": 67.7,
-        "geology_pct": 81.0,
-        "roughness_pct": 92.0,
-        "slope_pct": 84.0,
-        "thermal_pct": 15.8,
-        "aridity_pct": 74.0,
-        "ice_pct": 30.0
-      },
-      {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 67.6,
+        "overall_match_pct": 68.8,
         "geology_pct": 95.0,
         "roughness_pct": 83.0,
         "slope_pct": 73.2,
-        "thermal_pct": 10.8,
+        "thermal_pct": 18.8,
         "aridity_pct": 82.0,
         "ice_pct": 23.0
+      },
+      {
+        "earth_id": "mauna_loa",
+        "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
+        "overall_match_pct": 68.6,
+        "geology_pct": 81.0,
+        "roughness_pct": 92.0,
+        "slope_pct": 84.0,
+        "thermal_pct": 21.4,
+        "aridity_pct": 74.0,
+        "ice_pct": 30.0
       }
     ],
     "malapert_massif": [
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 86.6,
+        "overall_match_pct": 86.3,
         "geology_pct": 95.0,
         "roughness_pct": 98.0,
         "slope_pct": 95.6,
-        "thermal_pct": 37.2,
+        "thermal_pct": 35.3,
         "aridity_pct": 98.0,
         "ice_pct": 86.0
       },
       {
         "earth_id": "axel_heiberg",
         "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 84.8,
+        "overall_match_pct": 84.6,
         "geology_pct": 99.0,
         "roughness_pct": 96.0,
         "slope_pct": 89.6,
-        "thermal_pct": 35.4,
+        "thermal_pct": 33.5,
         "aridity_pct": 89.0,
         "ice_pct": 88.0
       },
       {
         "earth_id": "devon_island",
         "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 84.3,
+        "overall_match_pct": 84.1,
         "geology_pct": 98.0,
         "roughness_pct": 94.0,
         "slope_pct": 93.6,
-        "thermal_pct": 34.0,
+        "thermal_pct": 32.7,
         "aridity_pct": 86.0,
         "ice_pct": 90.0
       },
       {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 79.0,
+        "overall_match_pct": 79.5,
         "geology_pct": 93.0,
         "roughness_pct": 90.0,
         "slope_pct": 71.2,
-        "thermal_pct": 26.3,
+        "thermal_pct": 29.7,
         "aridity_pct": 97.0,
         "ice_pct": 86.0
+      },
+      {
+        "earth_id": "atacama_desert",
+        "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
+        "overall_match_pct": 76.8,
+        "geology_pct": 87.0,
+        "roughness_pct": 95.0,
+        "slope_pct": 81.6,
+        "thermal_pct": 26.5,
+        "aridity_pct": 99.0,
+        "ice_pct": 50.0
       },
       {
         "earth_id": "holuhraun_iceland",
@@ -1242,62 +1403,51 @@
         "geology_pct": 79.0,
         "roughness_pct": 87.0,
         "slope_pct": 88.0,
-        "thermal_pct": 27.7,
+        "thermal_pct": 27.9,
         "aridity_pct": 78.0,
         "ice_pct": 98.0
       },
       {
-        "earth_id": "atacama_desert",
-        "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 75.8,
-        "geology_pct": 87.0,
-        "roughness_pct": 95.0,
-        "slope_pct": 81.6,
-        "thermal_pct": 19.9,
-        "aridity_pct": 99.0,
-        "ice_pct": 50.0
-      },
-      {
         "earth_id": "kilbourne_hole",
         "earth_name": "Kilbourne Hole Maar Volcanic Crater",
-        "overall_match_pct": 73.0,
+        "overall_match_pct": 73.9,
         "geology_pct": 83.0,
         "roughness_pct": 91.0,
         "slope_pct": 90.4,
-        "thermal_pct": 19.0,
+        "thermal_pct": 25.0,
         "aridity_pct": 91.0,
         "ice_pct": 40.0
       },
       {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 72.3,
+        "overall_match_pct": 73.0,
         "geology_pct": 91.0,
         "roughness_pct": 91.0,
         "slope_pct": 84.4,
-        "thermal_pct": 18.6,
+        "thermal_pct": 23.2,
         "aridity_pct": 82.0,
         "ice_pct": 36.0
       },
       {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 69.7,
+        "overall_match_pct": 70.9,
         "geology_pct": 81.0,
         "roughness_pct": 89.0,
         "slope_pct": 84.8,
-        "thermal_pct": 11.3,
+        "thermal_pct": 19.4,
         "aridity_pct": 96.0,
         "ice_pct": 28.0
       },
       {
         "earth_id": "mauna_loa",
         "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
-        "overall_match_pct": 69.3,
+        "overall_match_pct": 69.6,
         "geology_pct": 77.0,
         "roughness_pct": 84.0,
         "slope_pct": 95.2,
-        "thermal_pct": 23.6,
+        "thermal_pct": 25.8,
         "aridity_pct": 74.0,
         "ice_pct": 43.0
       }
@@ -1306,110 +1456,110 @@
       {
         "earth_id": "mauna_loa",
         "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
-        "overall_match_pct": 92.3,
+        "overall_match_pct": 87.1,
         "geology_pct": 99.0,
         "roughness_pct": 99.0,
         "slope_pct": 94.4,
-        "thermal_pct": 86.3,
+        "thermal_pct": 51.8,
         "aridity_pct": 74.0,
         "ice_pct": 95.0
       },
       {
         "earth_id": "kilbourne_hole",
         "earth_name": "Kilbourne Hole Maar Volcanic Crater",
-        "overall_match_pct": 89.9,
+        "overall_match_pct": 85.0,
         "geology_pct": 95.0,
         "roughness_pct": 92.0,
         "slope_pct": 80.0,
-        "thermal_pct": 81.8,
+        "thermal_pct": 49.1,
         "aridity_pct": 91.0,
         "ice_pct": 98.0
       },
       {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 88.7,
+        "overall_match_pct": 84.3,
         "geology_pct": 97.0,
         "roughness_pct": 94.0,
         "slope_pct": 74.4,
-        "thermal_pct": 74.0,
+        "thermal_pct": 44.4,
         "aridity_pct": 96.0,
         "ice_pct": 90.0
       },
       {
         "earth_id": "atacama_desert",
         "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 88.2,
+        "overall_match_pct": 83.2,
         "geology_pct": 91.0,
         "roughness_pct": 78.0,
         "slope_pct": 92.0,
-        "thermal_pct": 82.7,
+        "thermal_pct": 49.6,
         "aridity_pct": 99.0,
         "ice_pct": 88.0
       },
       {
         "earth_id": "holuhraun_iceland",
         "earth_name": "Holuhraun & Askja Highland Lava Field",
-        "overall_match_pct": 87.6,
+        "overall_match_pct": 82.1,
         "geology_pct": 99.0,
         "roughness_pct": 96.0,
         "slope_pct": 98.4,
-        "thermal_pct": 90.4,
+        "thermal_pct": 54.2,
         "aridity_pct": 78.0,
         "ice_pct": 36.0
       },
       {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 85.1,
+        "overall_match_pct": 80.2,
         "geology_pct": 87.0,
         "roughness_pct": 74.0,
         "slope_pct": 94.8,
-        "thermal_pct": 81.3,
+        "thermal_pct": 48.8,
         "aridity_pct": 82.0,
         "ice_pct": 98.0
       },
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 82.6,
+        "overall_match_pct": 76.6,
         "geology_pct": 83.0,
         "roughness_pct": 85.0,
         "slope_pct": 85.2,
-        "thermal_pct": 99.9,
+        "thermal_pct": 60.0,
         "aridity_pct": 98.0,
         "ice_pct": 24.0
       },
       {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 81.2,
+        "overall_match_pct": 75.9,
         "geology_pct": 85.0,
         "roughness_pct": 73.0,
         "slope_pct": 81.6,
-        "thermal_pct": 89.0,
+        "thermal_pct": 53.4,
         "aridity_pct": 97.0,
         "ice_pct": 52.0
       },
       {
         "earth_id": "devon_island",
         "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 80.5,
+        "overall_match_pct": 74.7,
         "geology_pct": 80.0,
         "roughness_pct": 89.0,
         "slope_pct": 83.2,
-        "thermal_pct": 96.8,
+        "thermal_pct": 58.1,
         "aridity_pct": 86.0,
         "ice_pct": 28.0
       },
       {
         "earth_id": "axel_heiberg",
         "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 79.2,
+        "overall_match_pct": 73.3,
         "geology_pct": 77.0,
         "roughness_pct": 87.0,
         "slope_pct": 79.2,
-        "thermal_pct": 98.1,
+        "thermal_pct": 58.9,
         "aridity_pct": 89.0,
         "ice_pct": 26.0
       }
@@ -1418,79 +1568,68 @@
       {
         "earth_id": "atacama_desert",
         "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 92.5,
+        "overall_match_pct": 93.2,
         "geology_pct": 99.0,
         "roughness_pct": 99.0,
         "slope_pct": 98.4,
-        "thermal_pct": 64.5,
+        "thermal_pct": 69.0,
         "aridity_pct": 99.0,
         "ice_pct": 87.0
       },
       {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 88.8,
+        "overall_match_pct": 89.0,
         "geology_pct": 93.0,
         "roughness_pct": 96.0,
         "slope_pct": 88.0,
-        "thermal_pct": 70.8,
+        "thermal_pct": 72.2,
         "aridity_pct": 99.0,
         "ice_pct": 77.0
       },
       {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 87.3,
+        "overall_match_pct": 87.7,
         "geology_pct": 95.0,
         "roughness_pct": 97.0,
         "slope_pct": 98.8,
-        "thermal_pct": 63.1,
+        "thermal_pct": 65.8,
         "aridity_pct": 84.0,
         "ice_pct": 73.0
       },
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 85.1,
+        "overall_match_pct": 84.5,
         "geology_pct": 91.0,
         "roughness_pct": 92.0,
         "slope_pct": 78.8,
-        "thermal_pct": 81.8,
+        "thermal_pct": 77.8,
         "aridity_pct": 100.0,
         "ice_pct": 49.0
       },
       {
         "earth_id": "kilbourne_hole",
         "earth_name": "Kilbourne Hole Maar Volcanic Crater",
-        "overall_match_pct": 83.5,
+        "overall_match_pct": 84.1,
         "geology_pct": 97.0,
         "roughness_pct": 85.0,
         "slope_pct": 73.6,
-        "thermal_pct": 63.6,
+        "thermal_pct": 67.5,
         "aridity_pct": 93.0,
         "ice_pct": 77.0
       },
       {
         "earth_id": "holuhraun_iceland",
         "earth_name": "Holuhraun & Askja Highland Lava Field",
-        "overall_match_pct": 82.7,
+        "overall_match_pct": 82.4,
         "geology_pct": 93.0,
         "roughness_pct": 81.0,
         "slope_pct": 95.2,
-        "thermal_pct": 72.2,
+        "thermal_pct": 70.4,
         "aridity_pct": 80.0,
         "ice_pct": 61.0
-      },
-      {
-        "earth_id": "devon_island",
-        "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 81.4,
-        "geology_pct": 88.0,
-        "roughness_pct": 88.0,
-        "slope_pct": 76.8,
-        "thermal_pct": 78.6,
-        "aridity_pct": 88.0,
-        "ice_pct": 53.0
       },
       {
         "earth_id": "mauna_loa",
@@ -1499,97 +1638,108 @@
         "geology_pct": 91.0,
         "roughness_pct": 78.0,
         "slope_pct": 88.0,
-        "thermal_pct": 68.1,
+        "thermal_pct": 68.4,
         "aridity_pct": 76.0,
         "ice_pct": 80.0
       },
       {
-        "earth_id": "axel_heiberg",
-        "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 80.9,
-        "geology_pct": 85.0,
-        "roughness_pct": 90.0,
-        "slope_pct": 72.8,
-        "thermal_pct": 79.9,
-        "aridity_pct": 91.0,
-        "ice_pct": 51.0
-      },
-      {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 80.1,
+        "overall_match_pct": 81.0,
         "geology_pct": 95.0,
         "roughness_pct": 83.0,
         "slope_pct": 68.0,
-        "thermal_pct": 55.8,
+        "thermal_pct": 61.9,
         "aridity_pct": 98.0,
         "ice_pct": 65.0
+      },
+      {
+        "earth_id": "devon_island",
+        "earth_name": "Haughton Impact Crater, Devon Island",
+        "overall_match_pct": 80.9,
+        "geology_pct": 88.0,
+        "roughness_pct": 88.0,
+        "slope_pct": 76.8,
+        "thermal_pct": 75.2,
+        "aridity_pct": 88.0,
+        "ice_pct": 53.0
+      },
+      {
+        "earth_id": "axel_heiberg",
+        "earth_name": "Expedition Fiord, Axel Heiberg Island",
+        "overall_match_pct": 80.3,
+        "geology_pct": 85.0,
+        "roughness_pct": 90.0,
+        "slope_pct": 72.8,
+        "thermal_pct": 76.1,
+        "aridity_pct": 91.0,
+        "ice_pct": 51.0
       }
     ],
     "arcadia_planitia": [
       {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 90.0,
+        "overall_match_pct": 90.6,
         "geology_pct": 99.0,
         "roughness_pct": 98.0,
         "slope_pct": 93.2,
-        "thermal_pct": 64.0,
+        "thermal_pct": 67.5,
         "aridity_pct": 98.0,
         "ice_pct": 74.0
       },
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 86.0,
+        "overall_match_pct": 85.8,
         "geology_pct": 97.0,
         "roughness_pct": 86.0,
         "slope_pct": 60.0,
-        "thermal_pct": 74.9,
+        "thermal_pct": 73.2,
         "aridity_pct": 97.0,
         "ice_pct": 98.0
       },
       {
         "earth_id": "devon_island",
         "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 82.8,
+        "overall_match_pct": 82.6,
         "geology_pct": 94.0,
         "roughness_pct": 82.0,
         "slope_pct": 58.0,
-        "thermal_pct": 71.8,
+        "thermal_pct": 70.5,
         "aridity_pct": 91.0,
         "ice_pct": 98.0
       },
       {
-        "earth_id": "axel_heiberg",
-        "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 82.7,
-        "geology_pct": 91.0,
-        "roughness_pct": 84.0,
-        "slope_pct": 54.0,
-        "thermal_pct": 73.1,
-        "aridity_pct": 94.0,
-        "ice_pct": 100.0
-      },
-      {
         "earth_id": "atacama_desert",
         "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 81.6,
+        "overall_match_pct": 82.6,
         "geology_pct": 95.0,
         "roughness_pct": 93.0,
         "slope_pct": 82.8,
-        "thermal_pct": 57.7,
+        "thermal_pct": 64.3,
         "aridity_pct": 96.0,
         "ice_pct": 38.0
       },
       {
+        "earth_id": "axel_heiberg",
+        "earth_name": "Expedition Fiord, Axel Heiberg Island",
+        "overall_match_pct": 82.5,
+        "geology_pct": 91.0,
+        "roughness_pct": 84.0,
+        "slope_pct": 54.0,
+        "thermal_pct": 71.4,
+        "aridity_pct": 94.0,
+        "ice_pct": 100.0
+      },
+      {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 80.0,
+        "overall_match_pct": 80.8,
         "geology_pct": 99.0,
         "roughness_pct": 97.0,
         "slope_pct": 80.0,
-        "thermal_pct": 56.3,
+        "thermal_pct": 61.1,
         "aridity_pct": 87.0,
         "ice_pct": 24.0
       },
@@ -1600,40 +1750,40 @@
         "geology_pct": 87.0,
         "roughness_pct": 75.0,
         "slope_pct": 76.4,
-        "thermal_pct": 65.4,
+        "thermal_pct": 65.7,
         "aridity_pct": 83.0,
         "ice_pct": 90.0
       },
       {
         "earth_id": "kilbourne_hole",
         "earth_name": "Kilbourne Hole Maar Volcanic Crater",
-        "overall_match_pct": 72.5,
+        "overall_match_pct": 73.4,
         "geology_pct": 91.0,
         "roughness_pct": 79.0,
         "slope_pct": 54.8,
-        "thermal_pct": 56.8,
+        "thermal_pct": 62.9,
         "aridity_pct": 96.0,
         "ice_pct": 28.0
       },
       {
         "earth_id": "mauna_loa",
         "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
-        "overall_match_pct": 70.2,
+        "overall_match_pct": 70.5,
         "geology_pct": 85.0,
         "roughness_pct": 72.0,
         "slope_pct": 69.2,
-        "thermal_pct": 61.3,
+        "thermal_pct": 63.7,
         "aridity_pct": 79.0,
         "ice_pct": 31.0
       },
       {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 68.8,
+        "overall_match_pct": 70.1,
         "geology_pct": 89.0,
         "roughness_pct": 77.0,
         "slope_pct": 49.2,
-        "thermal_pct": 49.0,
+        "thermal_pct": 57.2,
         "aridity_pct": 99.0,
         "ice_pct": 16.0
       }
@@ -1646,106 +1796,106 @@
         "geology_pct": 100.0,
         "roughness_pct": 97.0,
         "slope_pct": 89.2,
-        "thermal_pct": 69.9,
+        "thermal_pct": 70.0,
         "aridity_pct": 94.0,
         "ice_pct": 67.0
       },
       {
         "earth_id": "afdera_danakil",
         "earth_name": "Danakil Depression & Erta Ale Rift",
-        "overall_match_pct": 88.2,
+        "overall_match_pct": 88.5,
         "geology_pct": 98.0,
         "roughness_pct": 99.0,
         "slope_pct": 94.8,
-        "thermal_pct": 62.2,
+        "thermal_pct": 64.3,
         "aridity_pct": 99.0,
         "ice_pct": 55.0
       },
       {
         "earth_id": "mcmurdo_dry_valleys",
         "earth_name": "McMurdo Dry Valleys (University Valley)",
-        "overall_match_pct": 86.6,
+        "overall_match_pct": 85.4,
         "geology_pct": 88.0,
         "roughness_pct": 90.0,
         "slope_pct": 84.0,
-        "thermal_pct": 88.1,
+        "thermal_pct": 80.3,
         "aridity_pct": 99.0,
         "ice_pct": 59.0
       },
       {
         "earth_id": "devon_island",
         "earth_name": "Haughton Impact Crater, Devon Island",
-        "overall_match_pct": 85.3,
+        "overall_match_pct": 84.2,
         "geology_pct": 85.0,
         "roughness_pct": 94.0,
         "slope_pct": 86.0,
-        "thermal_pct": 84.9,
+        "thermal_pct": 77.7,
         "aridity_pct": 89.0,
         "ice_pct": 63.0
       },
       {
-        "earth_id": "axel_heiberg",
-        "earth_name": "Expedition Fiord, Axel Heiberg Island",
-        "overall_match_pct": 85.2,
-        "geology_pct": 82.0,
-        "roughness_pct": 92.0,
-        "slope_pct": 90.0,
-        "thermal_pct": 86.3,
-        "aridity_pct": 92.0,
-        "ice_pct": 61.0
-      },
-      {
         "earth_id": "holuhraun_iceland",
         "earth_name": "Holuhraun & Askja Highland Lava Field",
-        "overall_match_pct": 85.0,
+        "overall_match_pct": 84.1,
         "geology_pct": 96.0,
         "roughness_pct": 99.0,
         "slope_pct": 67.6,
-        "thermal_pct": 78.6,
+        "thermal_pct": 72.8,
         "aridity_pct": 81.0,
         "ice_pct": 71.0
       },
       {
+        "earth_id": "axel_heiberg",
+        "earth_name": "Expedition Fiord, Axel Heiberg Island",
+        "overall_match_pct": 84.1,
+        "geology_pct": 82.0,
+        "roughness_pct": 92.0,
+        "slope_pct": 90.0,
+        "thermal_pct": 78.5,
+        "aridity_pct": 92.0,
+        "ice_pct": 61.0
+      },
+      {
         "earth_id": "mauna_loa",
         "earth_name": "Mauna Loa HI-SEAS Basaltic Shield",
-        "overall_match_pct": 83.6,
+        "overall_match_pct": 83.1,
         "geology_pct": 94.0,
         "roughness_pct": 96.0,
         "slope_pct": 74.8,
-        "thermal_pct": 74.5,
+        "thermal_pct": 70.8,
         "aridity_pct": 77.0,
         "ice_pct": 70.0
       },
       {
         "earth_id": "atacama_desert",
         "earth_name": "Atacama Hyper-Arid Core (Yungay Station)",
-        "overall_match_pct": 82.8,
+        "overall_match_pct": 82.9,
         "geology_pct": 96.0,
         "roughness_pct": 83.0,
         "slope_pct": 61.2,
-        "thermal_pct": 70.8,
+        "thermal_pct": 71.4,
         "aridity_pct": 98.0,
         "ice_pct": 77.0
       },
       {
         "earth_id": "qaidam_basin",
         "earth_name": "Qaidam Basin Yardang & Playa Desert",
-        "overall_match_pct": 81.0,
+        "overall_match_pct": 80.6,
         "geology_pct": 90.0,
         "roughness_pct": 78.0,
         "slope_pct": 50.8,
-        "thermal_pct": 77.2,
+        "thermal_pct": 74.6,
         "aridity_pct": 100.0,
         "ice_pct": 87.0
       },
       {
         "earth_id": "rio_tinto",
         "earth_name": "R\u00edo Tinto Acidic Iron-Sulfate Basin",
-        "overall_match_pct": 77.9,
+        "overall_match_pct": 77.7,
         "geology_pct": 92.0,
         "roughness_pct": 79.0,
         "slope_pct": 64.0,
-        "thermal_pct": 69.5,
+        "thermal_pct": 68.2,
         "aridity_pct": 85.0,
         "ice_pct": 63.0
       }

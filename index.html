@@ -3,21 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Aero v4.0 | Planetary Analog Mission Control</title>
-  <!-- Google Fonts: Space Grotesk, Plus Jakarta Sans & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap"
-    rel="stylesheet"
-  />
-  <!-- Leaflet Map CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <title>Dark Aero v4.1 | Planetary Analog Mission Control</title>
+  <!-- Self-hosted fonts + Leaflet (bundled locally so the console loads without internet) -->
+  <link rel="stylesheet" href="assets/css/fonts.css" />
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" />
   <!-- Custom Obsidian Aerospace Stylesheet -->
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
@@ -28,7 +17,7 @@
       <span class="brand-badge">DARK AERO</span>
       <div class="brand-title">
         <h1>Planetary Analog Decision Support</h1>
-        <span class="version-tag">v4.0</span>
+        <span class="version-tag">v4.1</span>
         <span class="brand-subtitle">NASA Space Apps 2026 &bull; Moon &amp; Mars Analog Suite</span>
       </div>
     </div>
@@ -42,6 +31,7 @@
 
     <div class="nav-actions">
       <button id="startJudgeTourBtn" class="btn-action active-mode">Judge Tour</button>
+      <button id="openMethodBtn" class="btn-action">Method &amp; Limits</button>
       <button id="openMatrixModalBtn" class="btn-action">60-Pair Matrix</button>
       <button id="exportCsvBtn" class="btn-action">CSV</button>
       <button id="exportJsonBtn" class="btn-action primary">Export JSON</button>
@@ -113,12 +103,12 @@
         </div>
 
         <div class="slider-row">
-          <label><span>Thermal Regime (Diviner/LST)</span><span id="val-thermal" class="weight-val">15%</span></label>
+          <label><span>Thermal Regime (Mean + Day/Night Swing)</span><span id="val-thermal" class="weight-val">15%</span></label>
           <input type="range" id="weight-thermal" min="0" max="100" value="15" />
         </div>
 
         <div class="slider-row">
-          <label><span>Hyper-Aridity (JAXA/SMAP)</span><span id="val-aridity" class="weight-val">15%</span></label>
+          <label><span>Hyper-Aridity (Precip Index)</span><span id="val-aridity" class="weight-val">15%</span></label>
           <input type="range" id="weight-aridity" min="0" max="100" value="15" />
         </div>
 
@@ -146,7 +136,8 @@
           </div>
         </div>
 
-        <div id="map"></div>
+        <div id="map" role="application" aria-label="Orbital satellite map of Earth analog sites"></div>
+        <div id="mapOfflineNotice" class="map-notice" hidden>Basemap tiles unreachable (offline?). Analog data, scoring and charts still work.</div>
 
         <div class="scanner-stack">
           <div class="telemetry-strip">
@@ -186,7 +177,9 @@
             />
           </div>
         </div>
-        <div id="analogRankingList" class="analog-list"></div>
+        <div id="robustnessStrip" class="robust-strip" aria-live="polite"></div>
+        <div id="recommendStrip" class="recommend-strip" aria-label="Best analog per mission profile"></div>
+        <div id="analogRankingList" class="analog-list" role="list"></div>
       </div>
     </section>
 
@@ -202,16 +195,17 @@
         <p id="inspectorSubtitle">--</p>
       </div>
 
-      <!-- 4-Tab Switcher -->
-      <div class="inspector-tabs">
-        <button class="tab-btn active" data-tab="tab-overview">Telemetry &amp; Sim</button>
-        <button class="tab-btn" data-tab="tab-compare">A/B Compare</button>
-        <button class="tab-btn" data-tab="tab-thermal">24h Thermal</button>
-        <button class="tab-btn" data-tab="tab-sar">SAR Lab</button>
+      <!-- 5-Tab Switcher -->
+      <div class="inspector-tabs" role="tablist" aria-label="Engineering and telemetry views">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="tab-overview">Telemetry</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-why" data-tab="tab-why">Why &amp; Data</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-compare" data-tab="tab-compare">A/B</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-thermal" data-tab="tab-thermal">Thermal</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-sar" data-tab="tab-sar">SAR Lab</button>
       </div>
 
       <!-- TAB 1: TELEMETRY & HARDWARE SIMULATOR -->
-      <div id="tab-overview" class="tab-pane active">
+      <div id="tab-overview" role="tabpanel" class="tab-pane active">
         <p id="inspectorSummary" class="summary-clamp"></p>
 
         <div class="metric-grid">
@@ -240,7 +234,7 @@
         <div class="simulator-box">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-family:var(--font-mono); font-size:9.5px; font-weight:700; color:var(--accent-cyan);">
-              HARDWARE &amp; ROVER STRESS SIMULATOR
+              HARDWARE &amp; ROVER STRESS SIMULATOR <span class="illustrative-tag">ILLUSTRATIVE MODEL</span>
             </span>
           </div>
 
@@ -280,15 +274,39 @@
         </div>
       </div>
 
+      <!-- TAB: WHY THIS SCORE / DATA BASIS / HERITAGE -->
+      <div id="tab-why" role="tabpanel" class="tab-pane">
+        <div id="whyFlags"></div>
+        <div class="why-block">
+          <div class="why-title">Where the points were lost <span id="whyLimiting" class="why-sub"></span></div>
+          <div id="whyLostBars" class="lost-bars"></div>
+        </div>
+        <div class="why-block">
+          <div class="why-title">Data basis <span id="whyLiveCount" class="why-sub"></span></div>
+          <div id="whyDataBasis" class="basis-grid"></div>
+          <div class="basis-legend">
+            <span class="basis curated">curated</span><span class="basis measured">measured</span><span class="basis derived">derived</span><span class="basis estimated">estimated</span><span class="basis assumed">assumed</span><span class="basis calibrated">calibrated</span>
+          </div>
+        </div>
+        <div class="why-block">
+          <div class="why-title">Field heritage</div>
+          <p id="whyHeritage" class="why-text"></p>
+        </div>
+        <div class="why-block">
+          <div class="why-title">What this analog cannot reproduce</div>
+          <p id="whyGravity" class="why-text"></p>
+        </div>
+      </div>
+
       <!-- TAB 2: HEAD-TO-HEAD A/B COMPARATOR -->
-      <div id="tab-compare" class="tab-pane">
+      <div id="tab-compare" role="tabpanel" class="tab-pane">
         <div class="metric-grid">
           <div class="control-group">
-            <label for="compareSiteASelect" style="color:var(--accent-cyan);">Candidate A (Cyan)</label>
+            <label for="compareSiteASelect" style="color:var(--accent-cyan);">Candidate A (Cyan, solid line)</label>
             <select id="compareSiteASelect" class="select-input" style="font-size:10px; padding:4px;"></select>
           </div>
           <div class="control-group">
-            <label for="compareSiteBSelect" style="color:#34d399;">Candidate B (Emerald)</label>
+            <label for="compareSiteBSelect" style="color:#34d399;">Candidate B (Emerald, dashed line)</label>
             <select id="compareSiteBSelect" class="select-input" style="font-size:10px; padding:4px;"></select>
           </div>
         </div>
@@ -301,8 +319,8 @@
           <thead>
             <tr>
               <th>Criterion</th>
-              <th>Site A</th>
-              <th>Site B</th>
+              <th>Site A &#9679;</th>
+              <th>Site B &#9670;</th>
               <th>Winner</th>
             </tr>
           </thead>
@@ -315,7 +333,7 @@
       </div>
 
       <!-- TAB 3: 24-HOUR DIURNAL THERMAL CYCLE -->
-      <div id="tab-thermal" class="tab-pane">
+      <div id="tab-thermal" role="tabpanel" class="tab-pane">
         <p class="summary-clamp">
           Local solar day/night Kelvin temperature curve comparing <strong>NASA LRO Diviner / Mars MEDA</strong> against terrestrial <strong>NASA MODIS LST</strong>.
         </p>
@@ -341,7 +359,7 @@
       </div>
 
       <!-- TAB 4: CSA RADARSAT SAR POLARIMETRY LAB -->
-      <div id="tab-sar" class="tab-pane">
+      <div id="tab-sar" role="tabpanel" class="tab-pane">
         <p class="summary-clamp">
           Calibrate C-band SAR backscatter from <strong>CSA RADARSAT-1 / RCM</strong> to compute incidence-corrected roughness and <strong>LRO Mini-RF</strong> CPR equivalents.
         </p>
@@ -410,8 +428,24 @@
     </div>
   </div>
 
+  <!-- Methodology & Limitations Modal -->
+  <div id="methodModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="methodTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 id="methodTitle" style="font-family:var(--font-display); font-size:13px; color:var(--accent-cyan); text-transform:uppercase;">
+            Methodology, Data Provenance &amp; Limitations
+          </h2>
+          <p style="font-size:10.5px; color:var(--text-muted);">How every score is computed, where the inputs come from, and what this tool does not claim.</p>
+        </div>
+        <button id="closeMethodBtn" class="btn-action">Close [Esc]</button>
+      </div>
+      <div id="methodBody" class="modal-body method-body"></div>
+    </div>
+  </div>
+
   <!-- 60-Pair Compatibility Matrix Modal -->
-  <div id="matrixModal" class="modal-backdrop">
+  <div id="matrixModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Compatibility matrix">
     <div class="modal-card">
       <div class="modal-header">
         <div>
@@ -445,16 +479,13 @@
     </div>
   </div>
 
-  <!-- External Libraries: Leaflet.js & Chart.js -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Bundled libraries: Leaflet.js & Chart.js (no CDN needed) -->
+  <script src="assets/vendor/leaflet/leaflet.js"></script>
+  <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
 
   <!-- Application Data, SAR Lab & Mission Control Logic -->
   <script src="assets/js/data.js"></script>
+  <script src="assets/js/scoring.js"></script>
   <script src="assets/js/sar-lab.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

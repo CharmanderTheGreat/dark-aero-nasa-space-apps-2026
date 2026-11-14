@@ -1,5 +1,5 @@
 /**
- * Dark Aero v4.0 - Aerospace Mission Control Controller
+ * Dark Aero v4.1 - Aerospace Mission Control Controller
  * Fixed-Viewport Single-Screen Architecture (100vh)
  * Features:
  * 1. Keyless Esri Orbital Satellite + NASA Worldview GIBS WMTS Map
@@ -14,7 +14,13 @@
 
 (function () {
   const dataset = window.DARK_AERO_DATA;
-  const STORAGE_KEY = "dark_aero_v4_custom_scans";
+  const Scoring = window.DarkAeroScoring;
+  // v41: older saved scans used placeholder (non-measured) slope/roughness values, so they are not restored.
+  const STORAGE_KEY = "dark_aero_v41_custom_scans";
+  const TOUR_SEEN_KEY = "dark_aero_v41_tour_seen";
+  const ROBUSTNESS_DRAWS = 2000;
+  const prefersReducedMotion =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Restore any user-scanned NASA POWER locations from localStorage
   try {
@@ -70,39 +76,8 @@
   // 1. SIMILARITY & HARDWARE ENGINEERING ENGINE
   // ============================================================================
   function computeCustomScore(target, earth) {
-    const totalWeight =
-      weights.geology +
-      weights.roughness +
-      weights.slope +
-      weights.thermal +
-      weights.aridity +
-      weights.ice || 1.0;
-
-    const geologyScore = 1.0 - Math.abs(target.basalt_index - earth.basalt_index);
-    const roughnessScore = 1.0 - Math.abs(target.radar_cpr - earth.sar_roughness);
-    const slopeScore = Math.max(0.0, 1.0 - Math.abs(target.slope_deg - earth.slope_deg) / 25.0);
-    const thermalScore = Math.max(0.0, 1.0 - Math.abs(target.mean_temp_k - earth.mean_temp_k) / 220.0);
-    const aridityScore = 1.0 - Math.abs(target.aridity_index - earth.aridity_index);
-    const iceScore = 1.0 - Math.abs(target.ice_potential - earth.ice_potential);
-
-    const weighted =
-      (geologyScore * weights.geology +
-        roughnessScore * weights.roughness +
-        slopeScore * weights.slope +
-        thermalScore * weights.thermal +
-        aridityScore * weights.aridity +
-        iceScore * weights.ice) /
-      totalWeight;
-
-    return {
-      overall: Number((weighted * 100).toFixed(1)),
-      geology: Number((geologyScore * 100).toFixed(1)),
-      roughness: Number((roughnessScore * 100).toFixed(1)),
-      slope: Number((slopeScore * 100).toFixed(1)),
-      thermal: Number((thermalScore * 100).toFixed(1)),
-      aridity: Number((aridityScore * 100).toFixed(1)),
-      ice: Number((iceScore * 100).toFixed(1))
-    };
+    // Shared engine (assets/js/scoring.js) - identical maths to the Python engine.
+    return Scoring.computeScores(target, earth, weights);
   }
 
   function computeHardwareTelemetry(target, earth, hardwareId) {
@@ -173,6 +148,33 @@
       globeState.isDragging = false;
     });
 
+    // Touch support (tablets / phones)
+    canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!e.touches.length) return;
+        globeState.isDragging = true;
+        globeState.lastX = e.touches[0].clientX;
+        globeState.lastY = e.touches[0].clientY;
+      },
+      { passive: true }
+    );
+    canvas.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!globeState.isDragging || !e.touches.length) return;
+        const t = e.touches[0];
+        globeState.rotLon += (t.clientX - globeState.lastX) * 0.8;
+        globeState.rotLat = Math.max(-85, Math.min(85, globeState.rotLat + (t.clientY - globeState.lastY) * 0.8));
+        globeState.lastX = t.clientX;
+        globeState.lastY = t.clientY;
+      },
+      { passive: true }
+    );
+    window.addEventListener("touchend", () => {
+      globeState.isDragging = false;
+    });
+
     window.addEventListener("mousemove", (e) => {
       if (!globeState.isDragging) return;
       const dx = e.clientX - globeState.lastX;
@@ -204,7 +206,7 @@
 
       ctx.clearRect(0, 0, w, h);
 
-      if (!globeState.isDragging) {
+      if (!globeState.isDragging && !prefersReducedMotion) {
         globeState.rotLon = (globeState.rotLon + 0.32) % 360;
       }
 
@@ -450,6 +452,22 @@
       )
       .addTo(map);
 
+    // Graceful degradation when tile servers are unreachable (offline venue Wi-Fi etc.)
+    const notice = document.getElementById("mapOfflineNotice");
+    let tileErrors = 0;
+    [esriSatellite, nasaTrueColor, nasaBlueMarble, openTopo, nasaSurfaceTemp].forEach((layer) => {
+      layer.on("tileerror", () => {
+        tileErrors++;
+        if (tileErrors > 4 && notice) notice.hidden = false;
+      });
+      layer.on("tileload", () => {
+        if (notice && tileErrors > 0) {
+          tileErrors = 0;
+          notice.hidden = true;
+        }
+      });
+    });
+
     markersLayer = L.layerGroup().addTo(map);
     traverseMarkersLayer = L.layerGroup().addTo(map);
 
@@ -471,13 +489,150 @@
     enableMapClickController();
   }
 
+  // ---- Live data helpers -----------------------------------------------------
+  let scanSequence = 0;
+
+  async function fetchJson(url, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err && err.name === "AbortError") throw new Error("timed out");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // NASA POWER uses -999 as a "no data" fill value.
+  function validPower(v) {
+    return typeof v === "number" && isFinite(v) && v > -900;
+  }
+
+  async function fetchPowerClimatology(lat, lon) {
+    const url =
+      "https://power.larc.nasa.gov/api/temporal/climatology/point" +
+      "?parameters=TS,T2M_MAX,T2M_MIN,PRECTOTCORR,ALLSKY_SFC_SW_DWN&community=SB" +
+      `&longitude=${lon}&latitude=${lat}&format=JSON`;
+    const json = await fetchJson(url, 15000);
+    const p = json && json.properties && json.properties.parameter;
+    if (!p || !p.TS) throw new Error("no data returned");
+    const out = {
+      ts: p.TS.ANN,
+      t2mMax: p.T2M_MAX ? p.T2M_MAX.ANN : NaN,
+      t2mMin: p.T2M_MIN ? p.T2M_MIN.ANN : NaN,
+      precip: p.PRECTOTCORR ? p.PRECTOTCORR.ANN : NaN,
+      solar: p.ALLSKY_SFC_SW_DWN ? p.ALLSKY_SFC_SW_DWN.ANN : NaN
+    };
+    if (!validPower(out.ts) || !validPower(out.precip)) throw new Error("no valid data at this location");
+    return out;
+  }
+
+  /**
+   * Real elevation + regional slope from a ~90 m DEM (Open-Meteo elevation API, Copernicus GLO-90).
+   * Slope = central differences over a ~1 km cross around the clicked point.
+   */
+  async function fetchTerrain(lat, lon) {
+    const clampLat = (v) => Math.max(-89.99, Math.min(89.99, v));
+    const clampLon = (v) => Math.max(-180, Math.min(180, v));
+    const d = 0.01;
+    const dLon = d / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const pts = [
+      [lat, lon],
+      [clampLat(lat + d), lon],
+      [clampLat(lat - d), lon],
+      [lat, clampLon(lon + dLon)],
+      [lat, clampLon(lon - dLon)]
+    ];
+    const url =
+      "https://api.open-meteo.com/v1/elevation" +
+      `?latitude=${pts.map((q) => q[0].toFixed(5)).join(",")}` +
+      `&longitude=${pts.map((q) => q[1].toFixed(5)).join(",")}`;
+    const json = await fetchJson(url, 10000);
+    const z = json && json.elevation;
+    if (!Array.isArray(z) || z.length !== 5 || z.some((v) => typeof v !== "number")) {
+      throw new Error("no elevation data");
+    }
+    const nsMeters = haversineKm(pts[2][0], pts[2][1], pts[1][0], pts[1][1]) * 1000;
+    const ewMeters = haversineKm(pts[4][0], pts[4][1], pts[3][0], pts[3][1]) * 1000;
+    const dzdy = nsMeters > 0 ? (z[1] - z[2]) / nsMeters : 0;
+    const dzdx = ewMeters > 0 ? (z[3] - z[4]) / ewMeters : 0;
+    const slopeDeg = (Math.atan(Math.hypot(dzdx, dzdy)) * 180) / Math.PI;
+    return { elevation: Math.round(z[0]), slopeDeg: Number(slopeDeg.toFixed(1)) };
+  }
+
+  /**
+   * Builds an Earth-analog candidate from a live scan. Every parameter carries a data-basis tag:
+   *   measured  = taken directly from a satellite/climatology product
+   *   derived   = computed from measured data with a documented rule
+   *   estimated = heuristic proxy
+   *   assumed   = neutral default (no data available in-browser)
+   */
+  function buildScanCandidate(lat, lon, power, terrain) {
+    const meanTempK = Number((power.ts + 273.15).toFixed(2));
+    const hasRange = validPower(power.t2mMax) && validPower(power.t2mMin) && power.t2mMax > power.t2mMin;
+    const tMin = hasRange ? power.t2mMin + 273.15 : meanTempK - 12;
+    const tMax = hasRange ? power.t2mMax + 273.15 : meanTempK + 12;
+    const annualPrecipMm = Number((power.precip * 365).toFixed(1));
+    const aridity = Number(Math.max(0.05, Math.min(0.99, 1.0 - annualPrecipMm / 950.0)).toFixed(2));
+    const ice = power.ts < -2.0 ? 0.9 : power.ts < 5.0 ? 0.55 : 0.15;
+    const slope = terrain ? terrain.slopeDeg : 8.0;
+    const roughness = Number(Math.max(0.35, Math.min(0.9, 0.4 + slope * 0.02)).toFixed(2));
+    const solar = validPower(power.solar) ? Number(power.solar.toFixed(2)) : null;
+
+    const basis = {
+      geology: "assumed",
+      roughness: "estimated",
+      slope: terrain ? "derived" : "assumed",
+      thermal: hasRange ? "measured" : "derived",
+      aridity: "derived",
+      ice: "estimated"
+    };
+    const live = Object.values(basis).filter((b) => b === "measured" || b === "derived").length;
+
+    return {
+      id: `custom_scan_${Date.now()}`,
+      name: `Live Scan (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
+      country: "User-scanned location",
+      coordinates: [lat, lon],
+      elevation_m: terrain ? terrain.elevation : 0,
+      mean_temp_k: meanTempK,
+      temp_extremes_k: [Number(tMin.toFixed(1)), Number(tMax.toFixed(1))],
+      slope_deg: slope,
+      basalt_index: 0.5,
+      sar_roughness: roughness,
+      aridity_index: aridity,
+      ice_potential: ice,
+      annual_precip_mm: annualPrecipMm,
+      agency_sources: [
+        "NASA POWER climatology (TS, T2M_MAX/MIN, PRECTOTCORR)",
+        terrain ? "Copernicus GLO-90 DEM via Open-Meteo" : "DEM unavailable (slope assumed)"
+      ],
+      best_for: ["Custom Field Trial", solar !== null ? `Solar: ${solar} kWh/m²/d` : "Solar: n/a"],
+      geological_summary:
+        `Live scan: ${meanTempK} K mean skin temperature, ${annualPrecipMm} mm/yr precipitation` +
+        (terrain ? `, ~${slope}° regional slope at ${terrain.elevation} m.` : ".") +
+        " Basalt geology is an assumed neutral value (0.5) and SAR roughness is a slope-based proxy; treat the match as a first-pass screen.",
+      gibs_layer_focus: "MODIS_Terra_CorrectedReflectance_TrueColor",
+      data_basis: basis,
+      live_params: live,
+      heritage: "",
+      is_live_scan: true
+    };
+  }
+
   function enableMapClickController() {
     const statusText = document.getElementById("scannerStatusText");
     const addBtn = document.getElementById("addScannedSiteBtn");
 
     map.on("click", async function (e) {
-      const lat = Number(e.latlng.lat.toFixed(4));
-      const lon = Number(e.latlng.lng.toFixed(4));
+      // wrap() keeps longitude inside -180..180 (the map repeats horizontally, the APIs do not)
+      const wrapped = e.latlng.wrap();
+      const lat = Number(wrapped.lat.toFixed(4));
+      const lon = Number(wrapped.lng.toFixed(4));
 
       if (traverseModeActive) {
         traverseWaypoints.push([lat, lon]);
@@ -519,82 +674,52 @@
         fillOpacity: 0.95
       }).addTo(map);
 
-      statusText.innerHTML = `Querying <strong>NASA POWER API</strong> at <code>${lat}°, ${lon}°</code>...`;
+      statusText.innerHTML = `Querying <strong>NASA POWER</strong> + <strong>DEM</strong> at <code>${lat}°, ${lon}°</code>...`;
       addBtn.style.display = "none";
+      lastScannedCandidate = null;
+      const scanId = ++scanSequence;
 
       customScanMarker
-        .bindPopup(`<strong>Scanning NASA POWER API...</strong><br/>Coords: ${lat}°, ${lon}°`)
+        .bindPopup(`<strong>Scanning NASA POWER + DEM...</strong><br/>Coords: ${lat}°, ${lon}°`)
         .openPopup();
 
-      try {
-        const apiUrl = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=TS,PRECTOTCORR,ALLSKY_SFC_SW_DWN&community=SB&longitude=${lon}&latitude=${lat}&format=JSON`;
-        const response = await fetch(apiUrl);
-        const nasaData = await response.json();
+      const [powerRes, terrainRes] = await Promise.allSettled([fetchPowerClimatology(lat, lon), fetchTerrain(lat, lon)]);
+      if (scanId !== scanSequence) return; // a newer click superseded this one
 
-        const params = nasaData.properties.parameter;
-        const meanTempC = params.TS.ANN;
-        const meanTempK = Number((meanTempC + 273.15).toFixed(2));
-        const dailyPrecipMm = params.PRECTOTCORR.ANN;
-        const annualPrecipMm = Number((dailyPrecipMm * 365).toFixed(1));
-        const solarIrradiance = Number(params.ALLSKY_SFC_SW_DWN.ANN.toFixed(2));
-
-        const derivedAridity = Number(Math.max(0.05, Math.min(0.99, 1.0 - annualPrecipMm / 950.0)).toFixed(2));
-        const derivedIce = meanTempC < -2.0 ? 0.90 : meanTempC < 5.0 ? 0.55 : 0.15;
-        const derivedRoughness = Number((0.55 + (Math.abs(lat) / 90.0) * 0.25).toFixed(2));
-        const derivedSlope = Number((6.5 + ((Math.abs(lat * lon) % 11) * 0.8)).toFixed(1));
-        const diurnalSpread = 12.0 + derivedAridity * 16.0;
-
-        lastScannedCandidate = {
-          id: `custom_nasa_${Date.now()}`,
-          name: `NASA Scan (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
-          country: "Live NASA POWER Coordinate",
-          coordinates: [lat, lon],
-          elevation_m: Math.round(350 + Math.abs(lat) * 12),
-          mean_temp_k: meanTempK,
-          temp_extremes_k: [
-            Number((meanTempK - diurnalSpread * 0.5).toFixed(1)),
-            Number((meanTempK + diurnalSpread * 0.5).toFixed(1))
-          ],
-          slope_deg: derivedSlope,
-          basalt_index: 0.82,
-          sar_roughness: derivedRoughness,
-          aridity_index: derivedAridity,
-          ice_potential: derivedIce,
-          annual_precip_mm: annualPrecipMm,
-          agency_sources: [
-            `NASA Langley POWER API (${lat}°, ${lon}°)`,
-            "NASA MODIS LST",
-            "CSA SAR Derived Roughness"
-          ],
-          best_for: ["Custom Field Trial", `Solar: ${solarIrradiance} kWh/m²/d`],
-          geological_summary: `Satellite-probed coordinate via NASA POWER API: ${meanTempK} K (${meanTempC.toFixed(1)}°C) mean surface temperature, ${annualPrecipMm} mm/yr precipitation, ${solarIrradiance} kWh/m²/day solar flux.`,
-          gibs_layer_focus: "MODIS_Terra_CorrectedReflectance_TrueColor"
-        };
-
-        const liveScore = computeCustomScore(target, lastScannedCandidate);
-
-        statusText.innerHTML = `
-          <span><strong>${lat}°, ${lon}°</strong></span> &bull;
-          <span>Temp: <strong>${meanTempK} K</strong></span> &bull;
-          <span>Precip: <strong>${annualPrecipMm} mm/yr</strong></span> &bull;
-          <span>Match: <strong style="color:#34d399;">${liveScore.overall}%</strong></span>
-        `;
-        addBtn.style.display = "inline-flex";
-
-        customScanMarker.setPopupContent(`
-          <div style="font-family:sans-serif; min-width:205px;">
-            <strong style="color:#0284c7;">LIVE NASA POWER SCAN</strong><br/>
-            <small>Coords: ${lat}°, ${lon}°</small>
-            <hr style="margin:4px 0; border-color:#cbd5e1;"/>
-            <strong>Match vs ${target.name}: <span style="color:#059669;">${liveScore.overall}%</span></strong><br/>
-            <small>• Temp: <strong>${meanTempK} K (${meanTempC.toFixed(1)}°C)</strong></small><br/>
-            <small>• Precip: <strong>${annualPrecipMm} mm/yr</strong></small><br/>
-            <small>• Solar Flux: <strong>${solarIrradiance} kWh/m²/day</strong></small>
-          </div>
-        `);
-      } catch (err) {
-        statusText.innerHTML = `Scanned <code>${lat}°, ${lon}°</code> (Offline fallback).`;
+      if (powerRes.status !== "fulfilled") {
+        const reason = powerRes.reason && powerRes.reason.message ? powerRes.reason.message : "request failed";
+        statusText.innerHTML = `<span style="color:#fb7185;">NASA POWER scan failed (${reason}).</span> Check your connection and click again.`;
+        customScanMarker.setPopupContent(`<strong>Scan failed</strong><br/><small>${reason}</small>`);
+        return;
       }
+
+      const terrain = terrainRes.status === "fulfilled" ? terrainRes.value : null;
+      lastScannedCandidate = buildScanCandidate(lat, lon, powerRes.value, terrain);
+      const c = lastScannedCandidate;
+      const liveScore = computeCustomScore(target, c);
+
+      statusText.innerHTML = `
+        <span><strong>${lat}°, ${lon}°</strong></span> &bull;
+        <span>Temp: <strong>${c.mean_temp_k} K</strong></span> &bull;
+        <span>Precip: <strong>${c.annual_precip_mm} mm/yr</strong></span> &bull;
+        <span>Slope: <strong>${c.slope_deg}°</strong>${terrain ? "" : " (assumed)"}</span> &bull;
+        <span>Match: <strong style="color:#34d399;">${liveScore.overall}%</strong></span> &bull;
+        <span style="color:#fbbf24;">${c.live_params}/6 live</span>
+      `;
+      addBtn.style.display = "inline-flex";
+
+      customScanMarker.setPopupContent(`
+        <div style="font-family:sans-serif; min-width:215px;">
+          <strong style="color:#0284c7;">LIVE SCAN (${c.live_params}/6 live)</strong><br/>
+          <small>Coords: ${lat}°, ${lon}°</small>
+          <hr style="margin:4px 0; border-color:#cbd5e1;"/>
+          <strong>Match vs ${target.name}: <span style="color:#059669;">${liveScore.overall}%</span></strong><br/>
+          <small>• Temp: <strong>${c.mean_temp_k} K</strong> (day/night ${c.temp_extremes_k[0]}–${c.temp_extremes_k[1]} K)</small><br/>
+          <small>• Precip: <strong>${c.annual_precip_mm} mm/yr</strong></small><br/>
+          <small>• Slope (~1 km): <strong>${c.slope_deg}°</strong> &bull; Elev: <strong>${c.elevation_m} m</strong></small><br/>
+          <small>• Geology &amp; SAR roughness: <em>assumed</em></small>
+        </div>
+      `);
     });
 
     addBtn.addEventListener("click", () => {
@@ -663,7 +788,11 @@
   function activateInspectorTab(tabId) {
     const tabBtns = document.querySelectorAll(".tab-btn");
     const tabPanes = document.querySelectorAll(".tab-pane");
-    tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
+    tabBtns.forEach((b) => {
+      const on = b.dataset.tab === tabId;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
     tabPanes.forEach((p) => p.classList.toggle("active", p.id === tabId));
     refreshDashboard(false);
   }
@@ -731,6 +860,7 @@
       const earth = dataset.earth_analogs.find((e) => e.id === selectedEarthId);
       if (earth) {
         earth.sar_roughness = sarRes.roughnessIndex;
+        earth.data_basis = Object.assign({}, earth.data_basis || {}, { roughness: "calibrated" });
         refreshDashboard(false);
       }
     });
@@ -783,6 +913,13 @@
       searchFilterText = e.target.value.trim().toLowerCase();
       refreshDashboard(false);
     });
+
+    document.querySelectorAll('input[type="range"]').forEach((input) => {
+      const labelSpan = input.parentElement && input.parentElement.querySelector("label span");
+      if (labelSpan) input.setAttribute("aria-label", labelSpan.textContent.trim());
+    });
+    searchInput.setAttribute("aria-label", "Filter analog sites by name, country or use");
+    document.getElementById("hardwareSystemSelect").setAttribute("aria-label", "Hardware system to stress-test");
 
     const hwSelect = document.getElementById("hardwareSystemSelect");
     hwSelect.addEventListener("change", (e) => {
@@ -837,33 +974,98 @@
       );
     });
 
-    renderAnalogCards(filteredRanked);
+    allRanked.forEach((item, i) => {
+      item.rank = i + 1;
+    });
+    const robustness = Scoring.weightRobustness(target, dataset.earth_analogs, ROBUSTNESS_DRAWS);
+    renderRobustnessStrip(allRanked, robustness);
+    renderRecommendations(target);
+
+    renderAnalogCards(filteredRanked, robustness);
     renderMapMarkers(allRanked);
 
     const activeEntry = allRanked.find((r) => r.earth.id === selectedEarthId) || allRanked[0];
     const compareBEntry = allRanked.find((r) => r.earth.id === compareSiteBId) || allRanked[1] || activeEntry;
 
     renderInspector(target, activeEntry.earth, activeEntry.scores);
+    renderWhyTab(target, activeEntry.earth, activeEntry.scores);
     renderHeadToHeadComparator(target, activeEntry, compareBEntry);
     renderDiurnalThermalChart(target, activeEntry.earth);
     updateTraverseTelemetry();
   }
 
-  function renderAnalogCards(ranked) {
+  function shortName(name) {
+    return String(name).split(",")[0].replace(/\s*\(.*\)\s*$/, "");
+  }
+
+  const PRESET_LABELS = {
+    balanced: "Balanced Science",
+    isru_ice: "ISRU Ice Mining",
+    rover_mobility: "Rover Mobility",
+    lava_habitat: "Lava Habitat"
+  };
+
+  function renderRobustnessStrip(allRanked, rob) {
+    const el = document.getElementById("robustnessStrip");
+    if (!el || !allRanked.length) return;
+    const leaderEntry = Object.entries(rob).sort((a, b) => b[1].top1Pct - a[1].top1Pct)[0];
+    const leader = dataset.earth_analogs.find((e) => e.id === leaderEntry[0]);
+    const current = allRanked[0].earth;
+    let html =
+      `<span class="robust-label">WEIGHT ROBUSTNESS</span> ` +
+      `<strong>${shortName(leader.name)}</strong> is #1 in <strong>${leaderEntry[1].top1Pct}%</strong> of ` +
+      `${ROBUSTNESS_DRAWS.toLocaleString()} random weightings (top-3: ${leaderEntry[1].top3Pct}%).`;
+    if (current.id !== leader.id) {
+      html += ` Your current weights favour <strong>${shortName(current.name)}</strong> (#1 in ${rob[current.id].top1Pct}%).`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderRecommendations(target) {
+    const el = document.getElementById("recommendStrip");
+    if (!el) return;
+    el.innerHTML = "";
+    Object.keys(MISSION_PRESETS).forEach((key) => {
+      const w = {};
+      Object.keys(MISSION_PRESETS[key]).forEach((k) => {
+        w[k] = MISSION_PRESETS[key][k] / 100.0;
+      });
+      const best = Scoring.bestForWeights(target, dataset.earth_analogs, w);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "rec-chip";
+      btn.title = `Apply the "${PRESET_LABELS[key]}" weights. Best analog: ${best.earth.name}`;
+      btn.innerHTML = `<span class="rec-use">${PRESET_LABELS[key]}</span><span class="rec-site"><span class="rec-name">${shortName(best.earth.name)}</span><b>${best.scores.overall}%</b></span>`;
+      btn.addEventListener("click", () => applyWeightPreset(key));
+      el.appendChild(btn);
+    });
+  }
+
+  function renderAnalogCards(ranked, rob) {
     const listEl = document.getElementById("analogRankingList");
     listEl.innerHTML = "";
 
-    ranked.forEach((item, idx) => {
+    ranked.forEach((item) => {
+      const flags = Scoring.criticalFlags(item.scores.raw, weights);
+      const r = rob && rob[item.earth.id];
       const card = document.createElement("div");
       card.className = `analog-card ${item.earth.id === selectedEarthId ? "active" : ""}`;
+      card.setAttribute("role", "listitem");
+      card.tabIndex = 0;
+      card.setAttribute(
+        "aria-label",
+        `Rank ${item.rank}, ${item.earth.name}, ${item.scores.overall} percent match` +
+          (flags.length ? `, warning: ${flags.map((f) => f.label).join(", ")}` : "")
+      );
       card.innerHTML = `
         <div>
           <div class="analog-card-header">
-            <div class="analog-card-title">#${idx + 1} ${item.earth.name}</div>
+            <div class="analog-card-title">#${item.rank} ${item.earth.name}</div>
             <span class="score-badge">${item.scores.overall}%</span>
           </div>
-          <div style="font-size:9.5px; color:#64748b; margin-top:1px;">
+          <div style="font-size:10px; color:#64748b; margin-top:1px;">
             ${item.earth.country} &bull; ${item.earth.elevation_m}m
+            ${item.earth.is_live_scan ? '&bull; <span class="basis estimated">live scan</span>' : ""}
           </div>
         </div>
         <div>
@@ -875,16 +1077,71 @@
             <span>SAR:${item.scores.roughness}%</span>
             <span>SLP:${item.scores.slope}%</span>
             <span>ICE:${item.scores.ice}%</span>
+            ${r ? `<span class="rob-tag" title="Share of ${ROBUSTNESS_DRAWS} random weightings where this site ranks #1">#1:${r.top1Pct}%</span>` : ""}
+            ${flags.length ? `<span class="warn-tag" title="${flags.map((f) => f.label + " " + f.score + "%").join("; ")}">&#9888; ${flags.map((f) => f.param).join(",")}</span>` : ""}
           </div>
         </div>
       `;
-      card.addEventListener("click", () => {
+      const choose = () => {
         selectedEarthId = item.earth.id;
         map.flyTo(item.earth.coordinates, 6, { duration: 1.0 });
         refreshDashboard(false);
+      };
+      card.addEventListener("click", choose);
+      card.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          choose();
+        }
       });
       listEl.appendChild(card);
     });
+  }
+
+  // "Why this score?" tab: weakest links, points lost, data provenance and field heritage.
+  function renderWhyTab(target, earth, scores) {
+    const flags = Scoring.criticalFlags(scores.raw, weights);
+    const flagEl = document.getElementById("whyFlags");
+    flagEl.innerHTML = flags.length
+      ? `<div class="flag-banner">&#9888; CRITICAL MISMATCH: ${flags
+          .map((f) => `${f.label} ${f.score}%`)
+          .join(" &bull; ")} &mdash; the overall ${scores.overall}% hides a failed priority.</div>`
+      : `<div class="flag-banner ok">No critical mismatch: every parameter weighted &ge;10% scores &ge;40%.</div>`;
+
+    const lost = Scoring.pointsLost(scores.raw, weights);
+    const maxLost = Math.max(5, lost[0].lost);
+    document.getElementById("whyLimiting").textContent = `limiting factor: ${lost[0].label}`;
+    document.getElementById("whyLostBars").innerHTML = lost
+      .map(
+        (row) => `
+        <div class="lost-row">
+          <span class="lost-name">${row.label}</span>
+          <span class="lost-track"><span class="lost-fill" style="width:${(row.lost / maxLost) * 100}%;"></span></span>
+          <span class="lost-val">&minus;${row.lost} pts <em>(${row.score}%)</em></span>
+        </div>`
+      )
+      .join("");
+
+    const basis = earth.data_basis || {};
+    const grid = document.getElementById("whyDataBasis");
+    grid.innerHTML = Scoring.PARAMS.map((k) => {
+      const b = basis[k] || "curated";
+      return `<span class="basis ${b}" title="${Scoring.PARAM_LABELS[k]}: ${b}">${Scoring.PARAM_LABELS[k]} &middot; ${b}</span>`;
+    }).join("");
+    document.getElementById("whyLiveCount").textContent = earth.is_live_scan
+      ? `${earth.live_params}/6 from live data`
+      : "curated reference values";
+
+    document.getElementById("whyHeritage").textContent =
+      earth.heritage ||
+      (earth.is_live_scan
+        ? "User-scanned location: no documented analog heritage. Validate with field/literature data before use."
+        : "No documented heritage recorded.");
+
+    document.getElementById("whyGravity").textContent =
+      `Gravity is 9.81 m/s² on Earth vs ${target.gravity_m_s2} m/s² on ${target.body}. ` +
+      `Vacuum, radiation and perchlorate chemistry cannot be reproduced either, so this site tests terrain, thermal ` +
+      `and operations, not low-gravity dynamics.`;
   }
 
   function renderMapMarkers(ranked) {
@@ -933,7 +1190,8 @@
   function renderInspector(target, earth, scores) {
     document.getElementById("inspectorTitle").textContent = earth.name;
     document.getElementById("inspectorSubtitle").textContent =
-      `${earth.country} • ${earth.coordinates[0].toFixed(2)}°, ${earth.coordinates[1].toFixed(2)}°`;
+      `${earth.country} • ${earth.coordinates[0].toFixed(2)}°, ${earth.coordinates[1].toFixed(2)}°` +
+      (earth.is_live_scan ? " • LIVE SCAN" : "");
     document.getElementById("inspectorOverallScore").textContent = `${scores.overall}%`;
     document.getElementById("inspectorSummary").textContent = earth.geological_summary;
 
@@ -1035,14 +1293,19 @@
             data: buildNormalizedAxisArray(entryA.earth, false),
             backgroundColor: "rgba(56, 189, 248, 0.18)",
             borderColor: "#38bdf8",
-            borderWidth: 1.6
+            pointStyle: "circle",
+            pointRadius: 3,
+            borderWidth: 1.8
           },
           {
             label: `B: ${entryB.earth.name}`,
             data: buildNormalizedAxisArray(entryB.earth, false),
             backgroundColor: "rgba(16, 185, 129, 0.16)",
             borderColor: "#10b981",
-            borderWidth: 1.6
+            borderDash: [6, 4],
+            pointStyle: "rectRot",
+            pointRadius: 4,
+            borderWidth: 1.8
           }
         ]
       },
@@ -1086,7 +1349,7 @@
         <td>${m.label}</td>
         <td style="font-family:var(--font-mono); color:#38bdf8; font-weight:600;">${valA}%</td>
         <td style="font-family:var(--font-mono); color:#34d399; font-weight:600;">${valB}%</td>
-        <td><span class="winner-pill">${winner}</span></td>
+        <td><span class="winner-pill">${winner === "Site A" ? "A &#9679;" : winner === "Site B" ? "B &#9670;" : "Tie"}</span></td>
       `;
       tbody.appendChild(tr);
     });
@@ -1194,32 +1457,44 @@
       {
         panelId: "panel-left",
         tabId: "tab-overview",
-        title: "Step 1: 3D Planetary Target & Mission Weighting",
-        desc: "Select Moon (Artemis South Pole) or Mars targets on the interactive 3D globe and tune weights across 6 multi-agency criteria (NASA LRO, CSA SAR, ESA, JAXA)."
+        title: "Step 1: Pick a Moon/Mars Target & Mission Profile",
+        desc: "Select an Artemis or Mars base on the 3D globe, then tune the six weights or pick a mission preset (ISRU, rover, lava habitat)."
       },
       {
         panelId: "panel-center",
         tabId: "tab-overview",
-        title: "Step 2: Orbital Satellite Map & Live NASA POWER API",
-        desc: "Click any Earth analog marker, toggle NASA Worldview MODIS overlays, plot a Rover Traverse route, or click anywhere on Earth to pull live NASA POWER satellite telemetry."
+        title: "Step 2: Map + Live Scan (2 real datasets)",
+        desc: "Click any spot on Earth: NASA POWER gives real temperature, day/night range and precipitation; a 90 m DEM gives real elevation and slope. Geology and SAR roughness stay labelled 'assumed'."
+      },
+      {
+        panelId: "panel-center",
+        tabId: "tab-overview",
+        title: "Step 3: Weight Robustness & Mission Picks",
+        desc: "Does the winner depend on how you weight things? The robustness line re-ranks 2,000 random weightings. The four chips show the best analog per mission type."
+      },
+      {
+        panelId: "panel-right",
+        tabId: "tab-why",
+        title: "Step 4: Why This Score? (Explainability)",
+        desc: "See which parameters cost points, whether a critical parameter failed, the data basis of every input (curated / measured / derived / assumed) and the site's real field heritage."
       },
       {
         panelId: "panel-right",
         tabId: "tab-overview",
-        title: "Step 3: Hardware & Rover Stress Simulator",
-        desc: "Evaluate mechanical wheel-slip risk, cryogenic thermal delta (ΔK), ISRU power draw (W), and abrasive regolith wear for rovers, spacesuits, and ice drills."
+        title: "Step 5: Hardware & Rover Stress Simulator",
+        desc: "Illustrative wheel-slip, thermal delta, power draw and regolith wear for rovers, suits and drills. Heuristic estimates, not validated vehicle models."
       },
       {
         panelId: "panel-right",
         tabId: "tab-compare",
-        title: "Step 4: Head-to-Head A/B Analog Comparator",
-        desc: "Overlay any two Earth analog candidates directly against the target extraterrestrial base on a 3-dataset radar plot with a parameter-by-parameter winner table."
+        title: "Step 6: Head-to-Head A/B Comparator",
+        desc: "Overlay two analogs (A solid, B dashed) against the target with a parameter-by-parameter winner table."
       },
       {
         panelId: "panel-right",
         tabId: "tab-sar",
-        title: "Step 5: Live CSA RADARSAT SAR Polarimetry Lab",
-        desc: "Calibrate C-band HH/HV radar backscatter and incidence angles in real time to compute normalized surface roughness and Lunar Mini-RF CPR equivalents."
+        title: "Step 7: CSA RADARSAT SAR Polarimetry Lab",
+        desc: "Calibrate C-band HH/HV backscatter and incidence angle into a roughness index and Mini-RF CPR equivalent, then apply it to the selected site."
       }
     ];
 
@@ -1263,6 +1538,85 @@
   // ============================================================================
   // 8. FULL 60-PAIR MATRIX MODAL & DATA EXPORTS (JSON & CSV)
   // ============================================================================
+  // ============================================================================
+  // 8b. METHODOLOGY, PROVENANCE & LIMITATIONS MODAL
+  // ============================================================================
+  function setupMethodologyModal() {
+    const modal = document.getElementById("methodModal");
+    const openBtn = document.getElementById("openMethodBtn");
+    const closeBtn = document.getElementById("closeMethodBtn");
+    const body = document.getElementById("methodBody");
+    if (!modal || !openBtn) return;
+
+    const rows = (dataset.parameter_methodology || [])
+      .map(
+        (m) => `<tr>
+          <td><strong>${m.label}</strong><br/><small>${m.range}</small></td>
+          <td>${m.target_source}</td>
+          <td>${m.earth_source}</td>
+          <td>${m.similarity}</td>
+          <td><span class="basis ${m.status}">${m.status}</span></td>
+        </tr>`
+      )
+      .join("");
+    const resRows = (dataset.official_resources || [])
+      .map(
+        (r) => `<tr><td>${r.agency}</td><td><strong>${r.name}</strong></td><td>${r.use}</td>
+          <td><span class="basis ${r.integration === "live" ? "measured" : "curated"}">${r.integration}</span></td></tr>`
+      )
+      .join("");
+    const limits = (dataset.limitations || []).map((l) => `<li>${l}</li>`).join("");
+
+    body.innerHTML = `
+      <h3>1. How the score works</h3>
+      <p>Every Earth analog is compared with the selected Moon/Mars base on six parameters. Each parameter gets a
+      0&ndash;100% similarity, and the overall match is the <strong>weighted average</strong> using the sliders
+      (weights are normalised). Defaults: geology 25, SAR roughness 20, slope 15, thermal 15, aridity 15, ice 10.</p>
+      <p>The <strong>thermal</strong> score blends mean temperature (60%) with the day/night swing (40%), so a stable
+      Arctic site is not mistaken for a thermal twin of a 160 K-swing lunar crater.</p>
+      <h3>2. Weakest-link flag</h3>
+      <p>A high overall score can hide a failed priority. Any parameter that carries &ge;10% of the weight and scores
+      below 40% raises a <span class="basis assumed">&#9888; critical mismatch</span> flag.</p>
+      <h3>3. Weight robustness</h3>
+      <p>Weights are subjective, so the app draws ${ROBUSTNESS_DRAWS.toLocaleString()} random weight vectors
+      (uniform over the 6-parameter simplex, fixed seed) and reports how often each site is #1 / top-3.</p>
+      <h3>4. Where the inputs come from</h3>
+      <table class="matrix-table method-table"><thead><tr>
+        <th>Parameter</th><th>Target (Moon/Mars) source</th><th>Earth analog source</th><th>Similarity</th><th>Status</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <p><strong>curated</strong> = analyst-assigned index informed by the listed agency products (not recomputed from
+      raw rasters in this app) &bull; <strong>measured</strong> = read directly from a live product &bull;
+      <strong>derived</strong> = computed from measured data by a stated rule &bull; <strong>estimated</strong> = heuristic
+      proxy &bull; <strong>assumed</strong> = neutral default &bull; <strong>calibrated</strong> = set by the SAR Lab.</p>
+      <h3>5. Live scan</h3>
+      <p>Clicking the map fetches <strong>NASA POWER</strong> climatology (skin temperature, 2 m max/min air
+      temperature, precipitation) and a <strong>Copernicus GLO-90</strong> elevation cross (via Open-Meteo) to compute
+      a ~1 km regional slope. Geology is assumed neutral (0.5) and SAR roughness is a slope-based proxy.</p>
+      <h3>6. Challenge resource coverage</h3>
+      <table class="matrix-table method-table"><thead><tr><th>Agency</th><th>Resource</th><th>Use in Dark Aero</th><th>Integration</th></tr></thead>
+      <tbody>${resRows}</tbody></table>
+      <p><strong>live</strong> = fetched or rendered at run time &bull; <strong>reference</strong> = informs the curated indices but is not queried live by the app.</p>
+      <h3>7. Limitations</h3>
+      <ul>${limits}</ul>
+      <p style="color:var(--text-muted);">Scoring is implemented once in <code>assets/js/scoring.js</code> and mirrored in
+      <code>scripts/analog_matching_engine.py</code>; <code>tests/parity_test.js</code> verifies they agree.</p>
+    `;
+
+    const open = () => {
+      modal.classList.add("open");
+      closeBtn.focus();
+    };
+    const close = () => {
+      modal.classList.remove("open");
+      openBtn.focus();
+    };
+    openBtn.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) close();
+    });
+  }
+
   function setupModalAndExports() {
     const modal = document.getElementById("matrixModal");
     const openBtn = document.getElementById("openMatrixModalBtn");
@@ -1300,10 +1654,19 @@
       if (e.target === modal) modal.classList.remove("open");
     });
 
+    setupMethodologyModal();
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
+      }
+    });
+
     document.getElementById("exportJsonBtn").addEventListener("click", () => {
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
       const report = {
-        generated_by: "Dark Aero Planetary Analog Decision Support System v4.0",
+        generated_by: "Dark Aero Planetary Analog Decision Support System v4.1",
+        scoring_version: dataset.scoring_version,
+        weight_robustness: Scoring.weightRobustness(target, dataset.earth_analogs, ROBUSTNESS_DRAWS),
         target_base: target,
         custom_weights: weights,
         selected_hardware_simulation: selectedHardwareId,
@@ -1313,7 +1676,9 @@
             earth_analog: e.name,
             country: e.country,
             coordinates: e.coordinates,
-            similarity_metrics: computeCustomScore(target, e),
+            similarity_metrics: (({ raw, ...rest }) => rest)(computeCustomScore(target, e)),
+            critical_flags: Scoring.criticalFlags(computeCustomScore(target, e).raw, weights),
+            data_basis: e.data_basis || "curated (all parameters)",
             hardware_stress_telemetry: computeHardwareTelemetry(target, e, selectedHardwareId),
             agency_datasets: e.agency_sources
           }))
@@ -1391,5 +1756,15 @@
     setupJudgeGuidedTour();
     setupModalAndExports();
     refreshDashboard(true);
+
+    // First visit: show the guided tour automatically (remembered per browser).
+    try {
+      if (!localStorage.getItem(TOUR_SEEN_KEY)) {
+        localStorage.setItem(TOUR_SEEN_KEY, "1");
+        setTimeout(() => document.getElementById("startJudgeTourBtn").click(), 700);
+      }
+    } catch (e) {
+      /* storage unavailable: skip auto-start */
+    }
   });
 })();

@@ -1,4 +1,4 @@
-# Dark Aero v4.0 — Planetary Analog Decision Support System
+# Dark Aero v4.1 — Planetary Analog Decision Support System
 
 **2026 NASA International Space Apps Challenge**  
 **Challenge:** Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars  
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-**Dark Aero v4.0** is a single-viewport aerospace decision-support and planetary engineering platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
+**Dark Aero v4.1** is a single-viewport aerospace decision-support and planetary engineering platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
 
 ### Key Capabilities:
 1. **Fixed Single-Viewport Aerospace Mission Console (`100vh`):** High-density obsidian telemetry interface featuring `Space Grotesk`, `Plus Jakarta Sans`, and `JetBrains Mono` typography with zero outer page scrolling.
@@ -20,9 +20,68 @@
 
 ---
 
+## 1b. What's new in v4.1
+
+| Area | Change |
+| :--- | :--- |
+| **Scientific honesty** | Every input now carries a *data basis* tag (`curated`, `measured`, `derived`, `estimated`, `assumed`, `calibrated`). New **Why & Data** tab and **Method & Limits** dialog explain exactly where each number comes from. |
+| **Live scan fixed** | The map click now uses real data: NASA POWER (skin temp, **day/night range**, precipitation) + a 90 m DEM (real elevation and ~1 km regional slope). The old pseudo-random slope and fixed 0.82 basalt value were removed. Geology (0.5) and SAR roughness (slope proxy) are explicitly labelled *assumed/estimated*. Timeouts, HTTP errors and NASA `-999` fill values are handled. |
+| **Better scoring** | Thermal score now blends mean temperature (60%) with the **diurnal swing** (40%). Weights are normalised in Python too. |
+| **Weakest-link flags** | A site can no longer hide a failed priority: any parameter with weight >= 10% and score < 40% raises a critical-mismatch warning. |
+| **Weight robustness** | 2,000 random weightings (fixed seed) show how often each site is #1 / top-3, so the recommendation does not depend on one slider setting. |
+| **Mission picks** | One-click chips show the best analog for ISRU, rover, lava-habitat and balanced profiles. |
+| **Explainability** | "Where the points were lost" bars + limiting factor per site. |
+| **Field heritage** | Documented analog/training heritage per site (verify wording against sources before quoting). |
+| **Single source of truth** | `scripts/analog_matching_engine.py` generates `data.js`, JSON and CSV. `assets/js/scoring.js` is the only JS scoring implementation; `tests/parity_test.js` proves JS == Python for all 60 pairs. |
+| **Offline-ready** | Leaflet, Chart.js and fonts are bundled in `assets/vendor` and `assets/fonts` (map tiles/APIs still need internet; the app degrades gracefully with a notice). |
+| **UX / a11y** | Keyboard-operable cards/tabs/modals (Esc closes), ARIA roles and slider labels, colour-blind-safe A/B chart (solid vs dashed + marker shapes), touch globe, reduced-motion support, larger minimum font, projector scaling, tablet/phone layout fixes, tour auto-starts on first visit. Longitude from map clicks is wrapped to -180..180. |
+
+---
+
+## 1c. How scoring works
+
+`overall = sum(weight_i x similarity_i) / sum(weights)` over six parameters:
+
+| Parameter | Similarity |
+| :--- | :--- |
+| Geology | `1 - abs(basalt_target - basalt_earth)` |
+| SAR roughness | `1 - abs(CPR_target - roughness_earth)` |
+| Slope | `1 - abs(delta_deg) / 25` |
+| Thermal | `0.6 x (1 - abs(delta_mean_K)/220) + 0.4 x (1 - abs(delta_swing_K)/200)` |
+| Aridity | `1 - abs(delta)` |
+| Subsurface ice | `1 - abs(delta)` |
+
+## 1d. Limitations (also shown in-app)
+
+* Similarity is not equivalence: no Earth site reproduces vacuum, radiation, lunar/Martian gravity (9.81 vs 1.62 / 3.72 m/s2) or perchlorates.
+* The six indices of the 10 curated sites are analyst-assigned from published agency products; they are not recomputed from raw rasters inside the app.
+* Hardware stress and rover-traverse energy numbers are illustrative heuristics, not validated vehicle models.
+* Logistics, permits, season windows and safety are not modelled.
+
+## 1e. Challenge resource coverage
+
+Live in the app: **NASA Worldview/GIBS** (map layers), **Copernicus GLO-90 DEM** (elevation/slope via Open-Meteo) and **NASA POWER** (not on the challenge list, but NASA). Reference only (inform the curated indices, not queried live): Earthdata Search, PDS, LRO + Diviner, CSA RCM / RADARSAT-1 / SAR tutorial, ESA Open Science Catalog, JAXA G-Portal. The full table is in the in-app **Method & Limits** dialog. Esri, OpenTopoMap and Open-Meteo are non-U.S.-Government services; NASA does not endorse them.
+
+## 1f. Run, test and regenerate
+
+```bash
+# Open the console (no build step)
+open index.html            # or: python -m http.server 8000
+
+# Regenerate data.js + JSON + CSV from the Python engine
+python scripts/analog_matching_engine.py
+
+# Verify JS scoring == Python scoring (60 pairs x 7 scores + sanity checks)
+node tests/parity_test.js
+```
+
+Credits / licences of bundled components: Leaflet (BSD-2-Clause), Chart.js (MIT), Space Grotesk, Plus Jakarta Sans and JetBrains Mono via Fontsource (SIL OFL). Map imagery: Esri World Imagery, NASA Worldview GIBS, OpenTopoMap. Data: NASA POWER, Copernicus GLO-90 DEM (via Open-Meteo), plus the agency products listed below.
+
+---
+
 ## 2. Space Agency Datasets & APIs Used
 
-| Space Agency | Dataset / API Portal | Role in Dark Aero v4.0 Architecture |
+| Space Agency | Dataset / API Portal | Role in Dark Aero v4.1 Architecture |
 | :--- | :--- | :--- |
 | **NASA** | **LRO Diviner Lunar Radiometer** | Polar cryogenic surface temperatures (95 K–112 K), diurnal thermal extremes, and silicate mineralogy indices. |
 | **NASA** | **LRO Mini-RF & LOLA** | S/X-band radar Circular Polarization Ratio (CPR) for regolith blockiness and laser altimetry slope gradients. |

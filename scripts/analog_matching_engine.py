@@ -1,5 +1,5 @@
 """
-Dark Aero - Multi-Agency Planetary Analog Matching Engine (v4.0)
+Dark Aero - Multi-Agency Planetary Analog Matching Engine (v4.1)
 2026 NASA International Space Apps Challenge
 Challenge: Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars
 
@@ -16,7 +16,7 @@ import json
 import csv
 import math
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Dict
 
 
@@ -59,6 +59,7 @@ class EarthAnalogSite:
     best_for: List[str]
     geological_summary: str
     gibs_layer_focus: str
+    heritage: str = ""        # Documented analog / astronaut-training / field-test heritage (verify before citing)
 
 
 class PlanetaryAnalogMatcher:
@@ -75,14 +76,24 @@ class PlanetaryAnalogMatcher:
         }
 
     def compute_similarity(self, target: ExtraterrestrialBase, earth: EarthAnalogSite) -> Dict[str, float]:
-        geology_score = 1.0 - abs(target.basalt_index - earth.basalt_index)
-        roughness_score = 1.0 - abs(target.radar_cpr - earth.sar_roughness)
-        slope_score = max(0.0, 1.0 - (abs(target.slope_deg - earth.slope_deg) / 25.0))
-        temp_diff = abs(target.mean_temp_k - earth.mean_temp_k)
-        thermal_score = max(0.0, 1.0 - (temp_diff / 220.0))
-        aridity_score = 1.0 - abs(target.aridity_index - earth.aridity_index)
-        ice_score = 1.0 - abs(target.ice_potential - earth.ice_potential)
+        """Mirror of assets/js/scoring.js (checked by tests/parity_test.js)."""
+        clamp = lambda x: max(0.0, min(1.0, x))
 
+        geology_score = clamp(1.0 - abs(target.basalt_index - earth.basalt_index))
+        roughness_score = clamp(1.0 - abs(target.radar_cpr - earth.sar_roughness))
+        slope_score = clamp(1.0 - abs(target.slope_deg - earth.slope_deg) / 25.0)
+
+        # Thermal = 60% mean-temperature match + 40% diurnal-swing match.
+        mean_score = clamp(1.0 - abs(target.mean_temp_k - earth.mean_temp_k) / 220.0)
+        swing_target = target.temp_extremes_k[1] - target.temp_extremes_k[0]
+        swing_earth = earth.temp_extremes_k[1] - earth.temp_extremes_k[0]
+        swing_score = clamp(1.0 - abs(swing_target - swing_earth) / 200.0)
+        thermal_score = 0.6 * mean_score + 0.4 * swing_score
+
+        aridity_score = clamp(1.0 - abs(target.aridity_index - earth.aridity_index))
+        ice_score = clamp(1.0 - abs(target.ice_potential - earth.ice_potential))
+
+        total_weight = sum(self.weights.values()) or 1.0
         weighted_total = (
             geology_score * self.weights["geology"]
             + roughness_score * self.weights["roughness"]
@@ -90,7 +101,7 @@ class PlanetaryAnalogMatcher:
             + thermal_score * self.weights["thermal"]
             + aridity_score * self.weights["aridity"]
             + ice_score * self.weights["ice"]
-        )
+        ) / total_weight
 
         return {
             "overall_match_pct": round(weighted_total * 100, 1),
@@ -198,7 +209,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             id="arcadia_planitia",
             name="Arcadia Planitia Glacial Plains",
             body="Mars",
-            region="Northern Lowlands (46.7°N, 188.0°E)",
+            region="Northern Lowlands (46.7°N, 172.0°W)",
             coordinates=[46.7, -172.0],
             mean_temp_k=195.0,
             temp_extremes_k=[154.0, 242.0],
@@ -479,16 +490,94 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
     ]
 
 
-def export_datasets(output_dir: str):
+SCORING_VERSION = "4.1"
+
+# Field heritage of each Earth analog. Wording is intentionally conservative:
+# please double-check each line against its primary source before quoting it in the pitch.
+HERITAGE = {
+    "devon_island": "Home of the NASA-supported Haughton-Mars Project (since 1997): long-running Moon/Mars field simulations, EVA and rover trials.",
+    "mcmurdo_dry_valleys": "Widely studied Mars cold-desert analog: ice-cemented permafrost, extreme aridity and sparse microbial life.",
+    "atacama_desert": "Hyper-arid Mars analog hosting NASA-funded rover and subsurface-drilling astrobiology field trials.",
+    "mauna_loa": "Hawaiian basaltic shield terrain; the HI-SEAS simulated-habitat site is on its slopes.",
+    "holuhraun_iceland": "Iceland's Askja region was used for Apollo-era astronaut geology training; Holuhraun (2014) is studied as a fresh basalt-flow analog.",
+    "axel_heiberg": "High-Arctic Mars analog with long-running research campaigns (e.g. McGill Arctic Research Station); permafrost, ice and spring systems.",
+    "rio_tinto": "Acidic iron/sulfate system studied for Mars mineralogy; site of the MARTE drilling and life-detection analog project.",
+    "kilbourne_hole": "Volcanic maar crater in New Mexico, studied for planetary-geology analog work (maar craters, mantle xenoliths).",
+    "qaidam_basin": "Hyper-arid, saline, wind-eroded basin widely studied as a Mars analog (yardangs, evaporites).",
+    "afdera_danakil": "Basaltic rift / hydrothermal-evaporite system studied as a Mars and early-Earth analog."
+}
+
+# How every score input is obtained. 'curated' = analyst-assigned 0-1 index informed by the listed
+# agency products; it is NOT recomputed from raw rasters inside this app.
+PARAMETER_METHODOLOGY = [
+    {"key": "geology", "label": "Basalt & Silicate Geology", "range": "0-1 index",
+     "target_source": "LRO Diviner silicate index / M3 / CRISM mineralogy",
+     "earth_source": "Sentinel-2 / ASTER band ratios + USGS spectral library",
+     "similarity": "1 - |target - earth|", "status": "curated"},
+    {"key": "roughness", "label": "SAR Roughness vs CPR", "range": "0-1 index",
+     "target_source": "LRO Mini-RF circular polarization ratio (CPR)",
+     "earth_source": "RADARSAT-1 / RCM C-band HH/HV backscatter (SAR Lab converts dB to 0-1 roughness)",
+     "similarity": "1 - |CPR - roughness|", "status": "curated"},
+    {"key": "slope", "label": "Terrain Slope", "range": "degrees",
+     "target_source": "LOLA / MOLA topography",
+     "earth_source": "ASTER GDEM / SRTM DEM",
+     "similarity": "1 - |delta| / 25 deg", "status": "curated"},
+    {"key": "thermal", "label": "Thermal Regime", "range": "kelvin",
+     "target_source": "LRO Diviner / Mars MEDA mean + diurnal extremes",
+     "earth_source": "MODIS land-surface temperature (mean + day/night extremes)",
+     "similarity": "0.6 x mean-temp match (220 K range) + 0.4 x diurnal-swing match (200 K range)", "status": "curated"},
+    {"key": "aridity", "label": "Hyper-Aridity", "range": "0-1 index",
+     "target_source": "Atmosphere / water-activity assumption (airless Moon = 1.0)",
+     "earth_source": "Annual precipitation (JAXA GPM / NASA POWER) mapped to an index",
+     "similarity": "1 - |target - earth|", "status": "curated"},
+    {"key": "ice", "label": "Subsurface Ice", "range": "0-1 index",
+     "target_source": "LEND neutron data (Moon), SHARAD radar (Mars)",
+     "earth_source": "Permafrost / glacier presence literature",
+     "similarity": "1 - |target - earth|", "status": "curated"}
+]
+
+# Resources named by the 2026 Space Apps challenge, and how Dark Aero actually uses each one.
+# integration: "live" = queried or rendered at run time; "reference" = informs the curated indices only.
+OFFICIAL_RESOURCES = [
+    {"agency": "NASA", "name": "Earthdata Search", "integration": "reference", "use": "Discovery of MODIS LST / ASTER products behind the curated thermal and slope values."},
+    {"agency": "NASA", "name": "Worldview (GIBS)", "integration": "live", "use": "Map overlays: MODIS true colour, Blue Marble, land-surface temperature."},
+    {"agency": "NASA", "name": "Planetary Data System (PDS)", "integration": "reference", "use": "Mars target values (MEDA, CRISM, MOLA, SHARAD)."},
+    {"agency": "NASA", "name": "Lunar Reconnaissance Orbiter (LRO)", "integration": "reference", "use": "Lunar target values: LOLA slope, Mini-RF CPR, LEND ice."},
+    {"agency": "NASA", "name": "LRO Diviner", "integration": "reference", "use": "Lunar polar temperatures and day/night extremes used in the thermal score."},
+    {"agency": "CSA", "name": "RADARSAT Constellation Mission (RCM)", "integration": "reference", "use": "C-band SAR basis for the roughness index and SAR Lab."},
+    {"agency": "CSA", "name": "RADARSAT-1 data", "integration": "reference", "use": "Open-licence SAR archive behind the Arctic crater / lava-field roughness values."},
+    {"agency": "CSA", "name": "SAR Python Tutorial", "integration": "reference", "use": "Method reference for the HH/HV backscatter to roughness workflow (scripts/sar_roughness_analyzer.py)."},
+    {"agency": "ESA", "name": "Copernicus Data Space Ecosystem", "integration": "live", "use": "Copernicus GLO-90 DEM (via Open-Meteo) for live elevation and slope; Sentinel-1/2 inform curated indices."},
+    {"agency": "ESA", "name": "Open Science Catalog", "integration": "reference", "use": "Dataset discovery for geology / surface-roughness products."},
+    {"agency": "JAXA", "name": "G-Portal", "integration": "reference", "use": "Precipitation and cryosphere records behind the aridity and ice indices."},
+    {"agency": "NASA", "name": "POWER (Langley) - not on the challenge list", "integration": "live", "use": "Live scan: skin temperature, day/night range, precipitation."}
+]
+
+LIMITATIONS = [
+    "Similarity is not equivalence: Earth analogs cannot reproduce vacuum, radiation, lunar/Martian gravity (every Earth site is 9.81 m/s2 vs 1.62 / 3.72) or perchlorate chemistry.",
+    "The six indices for the 10 curated sites are analyst-assigned from published agency products. They are not recomputed from raw rasters in this app. Treat them as a transparent starting point, not a survey.",
+    "Live NASA POWER scans measure temperature, precipitation and diurnal range for real; slope and elevation come from a ~90 m DEM sampled ~1 km around the click; geology and SAR roughness are assumptions and are labelled as such.",
+    "The Hardware & Rover Stress Simulator and rover-traverse energy numbers are illustrative engineering heuristics, not validated vehicle models.",
+    "Weights are subjective. The Weight Robustness panel shows how often each site stays #1 when weights are varied randomly.",
+    "Scores compare six parameters only; logistics, permits, season windows and safety are not modelled.",
+    "Esri imagery, OpenTopoMap and the Open-Meteo elevation service are non-U.S.-Government services governed by their own terms; NASA does not endorse them."
+]
+
+
+def export_datasets(output_dir: str, js_path: str = None):
     matcher = PlanetaryAnalogMatcher()
     targets = get_target_bases()
     analogs = get_earth_analogs()
 
     payload = {
-        "project": "Dark Aero - Planetary Analog Decision Support System (v4.0 Mission Control)",
+        "project": "Dark Aero - Planetary Analog Decision Support System (v4.1 Mission Control)",
         "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
         "event": "2026 NASA International Space Apps Challenge",
+        "scoring_version": SCORING_VERSION,
         "default_weights": matcher.weights,
+        "parameter_methodology": PARAMETER_METHODOLOGY,
+        "limitations": LIMITATIONS,
+        "official_resources": OFFICIAL_RESOURCES,
         "target_bases": [asdict(t) for t in targets],
         "earth_analogs": [],
         "comparison_matrix": {}
@@ -500,6 +589,7 @@ def export_datasets(output_dir: str):
         payload["comparison_matrix"][target.id] = []
 
     for site in analogs:
+        site.heritage = HERITAGE.get(site.id, "")
         site_dict = asdict(site)
         site_dict["matches"] = {}
         for target in targets:
@@ -544,11 +634,21 @@ def export_datasets(output_dir: str):
         writer.writeheader()
         writer.writerows(csv_rows)
 
+    # Single source of truth: the web app's data.js is generated from the same payload.
+    if js_path:
+        with open(js_path, "w", encoding="utf-8") as f:
+            f.write("// AUTO-GENERATED by scripts/analog_matching_engine.py - do not edit by hand.\n")
+            f.write("// Re-generate with: python scripts/analog_matching_engine.py\n")
+            f.write("window.DARK_AERO_DATA = ")
+            json.dump(payload, f, indent=2)
+            f.write(";\n")
+
     print(f"Exported {len(targets)} extraterrestrial bases and {len(analogs)} Earth analogs.")
     return payload
 
 
 if __name__ == "__main__":
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(root_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
-    export_datasets(data_dir)
+    export_datasets(data_dir, js_path=os.path.join(root_dir, "assets", "js", "data.js"))
