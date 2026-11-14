@@ -1,25 +1,38 @@
 /**
- * Dark Aero v2.0 - Aerospace Mission Control Controller
- * Features:
- * 1. Keyless NASA Worldview GIBS + Esri High-Res Satellite Map (Zero API Key Watermark)
- * 2. Interactive 3D Planetary Target Globe (Moon & Mars Orbital Renderer)
- * 3. Live NASA Langley POWER Satellite API Coordinate Scanner + Add Custom Site
- * 4. Multi-Parameter Mission Presets & Real-Time Analog Weighting Engine
- * 5. Hardware & Rover Field-Test Stress Simulator (LTV Rover, xEMU Suit, TRIDENT Drill, Habitat)
- * 6. Full 60-Pair Multi-Agency Compatibility Matrix Modal + JSON & CSV Exports
+ * Dark Aero v3.0 - Aerospace Mission Control Controller
+ * Integrates:
+ * 1. Keyless Esri Orbital Satellite + NASA Worldview GIBS WMTS Map
+ * 2. Interactive 3D Planetary Target Globe (Moon & Mars)
+ * 3. Live NASA Langley POWER Satellite API Coordinate Scanner
+ * 4. Rover Traverse & EVA Route Polyline Planner (Haversine Distance + Wh Energy Estimator)
+ * 5. Head-to-Head A/B Earth Analog Comparator (3-Dataset Radar + Parameter Winner Table)
+ * 6. 24-Hour Diurnal Thermal Cycle Chart (Day/Night Kelvin Swing)
+ * 7. Interactive CSA RADARSAT SAR Polarimetry Lab + Hardware Stress Simulator
  */
 
 (function () {
   const dataset = window.DARK_AERO_DATA;
   let currentTargetId = dataset.target_bases[0].id;
   let selectedEarthId = dataset.earth_analogs[0].id;
+  let compareSiteBId = dataset.earth_analogs[1].id;
   let selectedHardwareId = "ltv_rover";
   let searchFilterText = "";
+
   let map = null;
   let markersLayer = null;
   let customScanMarker = null;
   let lastScannedCandidate = null;
+
+  // Rover Traverse Planner State
+  let traverseModeActive = false;
+  let traverseWaypoints = [];
+  let traversePolyline = null;
+  let traverseMarkersLayer = null;
+
+  // Chart.js Instances
   let radarChart = null;
+  let abRadarChart = null;
+  let diurnalChart = null;
 
   const weights = {
     geology: 0.25,
@@ -185,14 +198,12 @@
 
       const isMoon = globeState.body === "Moon";
 
-      // Outer orbital ring glow
       ctx.beginPath();
       ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
       ctx.strokeStyle = isMoon ? "rgba(34, 211, 238, 0.28)" : "rgba(245, 158, 11, 0.32)";
       ctx.lineWidth = 1.2;
       ctx.stroke();
 
-      // Planetary sphere gradient
       const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
       if (isMoon) {
         grad.addColorStop(0, "#94a3b8");
@@ -209,7 +220,6 @@
       ctx.fillStyle = grad;
       ctx.fill();
 
-      // Draw latitude & longitude graticules
       ctx.lineWidth = 0.75;
       ctx.strokeStyle = isMoon ? "rgba(148, 163, 184, 0.25)" : "rgba(253, 186, 116, 0.25)";
 
@@ -251,7 +261,6 @@
         ctx.stroke();
       }
 
-      // Draw Target Base Beacon Pin
       const targetPt = project3D(globeState.targetLat, globeState.targetLon, r, cx, cy);
       if (targetPt.z > -0.15) {
         ctx.beginPath();
@@ -293,8 +302,74 @@
   }
 
   // ============================================================================
-  // 3. KEYLESS MULTI-LAYER SATELLITE MAP & LIVE NASA POWER API SCANNER
+  // 3. SATELLITE MAP, ROVER TRAVERSE PLANNER & LIVE NASA POWER SCANNER
   // ============================================================================
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371.0;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180.0;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180.0;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180.0) *
+        Math.cos((lat2 * Math.PI) / 180.0) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function updateTraverseTelemetry() {
+    const distEl = document.getElementById("traverseDistanceText");
+    const energyEl = document.getElementById("traverseEnergyText");
+    const timeEl = document.getElementById("traverseTimeText");
+    const hazardEl = document.getElementById("traverseHazardText");
+
+    if (traverseWaypoints.length < 2) {
+      distEl.textContent = "0.00 km";
+      energyEl.textContent = "0 Wh";
+      timeEl.textContent = "0.0 hrs";
+      hazardEl.textContent = traverseWaypoints.length === 1 ? "Click 2nd waypoint..." : "Ready";
+      return;
+    }
+
+    let totalKm = 0.0;
+    for (let i = 1; i < traverseWaypoints.length; i++) {
+      totalKm += haversineKm(
+        traverseWaypoints[i - 1][0],
+        traverseWaypoints[i - 1][1],
+        traverseWaypoints[i][0],
+        traverseWaypoints[i][1]
+      );
+    }
+
+    const earth = dataset.earth_analogs.find((e) => e.id === selectedEarthId) || dataset.earth_analogs[0];
+    const target = dataset.target_bases.find((t) => t.id === currentTargetId);
+
+    // Energy draw model (Wh/km) scaled by terrain slope, SAR roughness, and target gravity
+    const whPerKm = 145 + earth.slope_deg * 12.5 + earth.sar_roughness * 95 + (target.gravity_m_s2 * 18);
+    const totalWh = Math.round(totalKm * whPerKm);
+    const nominalSpeedKmh = Math.max(2.5, 9.5 - earth.sar_roughness * 4.2);
+    const estHours = (totalKm / nominalSpeedKmh).toFixed(1);
+
+    distEl.textContent = `${totalKm.toFixed(2)} km`;
+    energyEl.textContent = `${totalWh.toLocaleString()} Wh`;
+    timeEl.textContent = `${estHours} hrs`;
+    hazardEl.textContent =
+      earth.slope_deg > 13.5 ? "HIGH SLOPE GRADE" : earth.slope_deg > 8.5 ? "MODERATE" : "NOMINAL";
+  }
+
+  function clearRoverTraverse() {
+    traverseWaypoints = [];
+    if (traversePolyline) {
+      map.removeLayer(traversePolyline);
+      traversePolyline = null;
+    }
+    if (traverseMarkersLayer) {
+      traverseMarkersLayer.clearLayers();
+    }
+    updateTraverseTelemetry();
+  }
+
   function initMap() {
     map = L.map("map", {
       center: [22.0, -25.0],
@@ -304,7 +379,6 @@
       worldCopyJump: true
     });
 
-    // 1. Default Keyless Layer: Esri World Imagery (Works at all zoom levels 0-17 without any API key)
     const esriSatellite = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
@@ -314,7 +388,6 @@
       }
     ).addTo(map);
 
-    // 2. NASA Worldview GIBS - MODIS Terra True Color (Scaled smoothly above zoom 9)
     const nasaTrueColor = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2025-07-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg",
       {
@@ -324,7 +397,6 @@
       }
     );
 
-    // 3. NASA Blue Marble Next Generation (Cloud-Free Global Mosaic)
     const nasaBlueMarble = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
       {
@@ -334,7 +406,6 @@
       }
     );
 
-    // 4. OpenTopoMap Terrain Contours (Keyless Elevation Contours)
     const openTopo = L.tileLayer(
       "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       {
@@ -344,7 +415,6 @@
       }
     );
 
-    // Overlay: NASA Worldview GIBS - Land Surface Temperature Day Layer
     const nasaSurfaceTemp = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Land_Surface_Temp_Day/default/2025-07-15/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png",
       {
@@ -370,17 +440,62 @@
       .addTo(map);
 
     markersLayer = L.layerGroup().addTo(map);
+    traverseMarkersLayer = L.layerGroup().addTo(map);
 
-    enableLiveNasaCoordinateScanner();
+    const toggleTraverseBtn = document.getElementById("toggleTraverseBtn");
+    const clearTraverseBtn = document.getElementById("clearTraverseBtn");
+
+    toggleTraverseBtn.addEventListener("click", () => {
+      traverseModeActive = !traverseModeActive;
+      toggleTraverseBtn.classList.toggle("active-mode", traverseModeActive);
+      toggleTraverseBtn.textContent = traverseModeActive
+        ? "Plot Rover Traverse: ON (Click Map)"
+        : "Plot Rover Traverse: OFF";
+    });
+
+    clearTraverseBtn.addEventListener("click", () => {
+      clearRoverTraverse();
+    });
+
+    enableMapClickController();
   }
 
-  function enableLiveNasaCoordinateScanner() {
+  function enableMapClickController() {
     const statusText = document.getElementById("scannerStatusText");
     const addBtn = document.getElementById("addScannedSiteBtn");
 
     map.on("click", async function (e) {
       const lat = Number(e.latlng.lat.toFixed(4));
       const lon = Number(e.latlng.lng.toFixed(4));
+
+      // Mode A: Rover Traverse Waypoint Plotting
+      if (traverseModeActive) {
+        traverseWaypoints.push([lat, lon]);
+        const wpIdx = traverseWaypoints.length;
+
+        const wpMarker = L.circleMarker([lat, lon], {
+          radius: 6,
+          fillColor: "#22d3ee",
+          color: "#ffffff",
+          weight: 2,
+          fillOpacity: 1
+        }).bindTooltip(`WP-${wpIdx}`, { permanent: true, direction: "top" });
+        traverseMarkersLayer.addLayer(wpMarker);
+
+        if (traversePolyline) {
+          map.removeLayer(traversePolyline);
+        }
+        traversePolyline = L.polyline(traverseWaypoints, {
+          color: "#22d3ee",
+          weight: 3,
+          dashArray: "6, 6"
+        }).addTo(map);
+
+        updateTraverseTelemetry();
+        return;
+      }
+
+      // Mode B: Live NASA Langley POWER Satellite Climatology API Scanner
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
 
       if (customScanMarker) {
@@ -418,14 +533,19 @@
         const derivedIce = meanTempC < -2.0 ? 0.90 : meanTempC < 5.0 ? 0.55 : 0.15;
         const derivedRoughness = Number((0.55 + (Math.abs(lat) / 90.0) * 0.25).toFixed(2));
         const derivedSlope = Number((6.5 + ((Math.abs(lat * lon) % 11) * 0.8)).toFixed(1));
+        const diurnalSpread = 12.0 + derivedAridity * 16.0;
 
         lastScannedCandidate = {
           id: `custom_nasa_${Date.now()}`,
           name: `NASA Scanned Site (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
           country: "Live NASA POWER Satellite Coordinate",
           coordinates: [lat, lon],
-          elevation_m: Math.round(350 + (Math.abs(lat) * 12)),
+          elevation_m: Math.round(350 + Math.abs(lat) * 12),
           mean_temp_k: meanTempK,
+          temp_extremes_k: [
+            Number((meanTempK - diurnalSpread * 0.5).toFixed(1)),
+            Number((meanTempK + diurnalSpread * 0.5).toFixed(1))
+          ],
           slope_deg: derivedSlope,
           basalt_index: 0.82,
           sar_roughness: derivedRoughness,
@@ -473,12 +593,13 @@
       dataset.earth_analogs.push(lastScannedCandidate);
       selectedEarthId = lastScannedCandidate.id;
       addBtn.style.display = "none";
+      populateCompareDropdowns();
       refreshDashboard(false);
     });
   }
 
   // ============================================================================
-  // 4. UI BINDINGS, PRESETS & DASHBOARD RENDERING
+  // 4. UI BINDINGS, TABS, PRESETS & DASHBOARD RENDERING
   // ============================================================================
   function populateTargetDropdown() {
     const select = document.getElementById("targetBaseSelect");
@@ -494,6 +615,111 @@
       currentTargetId = e.target.value;
       refreshDashboard(true);
     });
+  }
+
+  function populateCompareDropdowns() {
+    const selA = document.getElementById("compareSiteASelect");
+    const selB = document.getElementById("compareSiteBSelect");
+    if (!selA || !selB) return;
+
+    selA.innerHTML = "";
+    selB.innerHTML = "";
+
+    dataset.earth_analogs.forEach((site) => {
+      const optA = document.createElement("option");
+      optA.value = site.id;
+      optA.textContent = site.name;
+      selA.appendChild(optA);
+
+      const optB = document.createElement("option");
+      optB.value = site.id;
+      optB.textContent = site.name;
+      selB.appendChild(optB);
+    });
+
+    selA.value = selectedEarthId;
+    if (!dataset.earth_analogs.some((e) => e.id === compareSiteBId)) {
+      compareSiteBId = dataset.earth_analogs[1] ? dataset.earth_analogs[1].id : dataset.earth_analogs[0].id;
+    }
+    selB.value = compareSiteBId;
+  }
+
+  function bindInspectorTabs() {
+    const tabBtns = document.querySelectorAll(".tab-btn");
+    const tabPanes = document.querySelectorAll(".tab-pane");
+
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetPaneId = btn.dataset.tab;
+        tabBtns.forEach((b) => b.classList.remove("active"));
+        tabPanes.forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(targetPaneId).classList.add("active");
+        refreshDashboard(false);
+      });
+    });
+
+    document.getElementById("compareSiteASelect").addEventListener("change", (e) => {
+      selectedEarthId = e.target.value;
+      refreshDashboard(false);
+    });
+
+    document.getElementById("compareSiteBSelect").addEventListener("change", (e) => {
+      compareSiteBId = e.target.value;
+      refreshDashboard(false);
+    });
+  }
+
+  function bindSarPolarimetryLab() {
+    const hhSlider = document.getElementById("sarHhSlider");
+    const hvSlider = document.getElementById("sarHvSlider");
+    const incSlider = document.getElementById("sarIncSlider");
+    const applyBtn = document.getElementById("applySarToSiteBtn");
+
+    function updateSarLabReadout() {
+      const hh = parseFloat(hhSlider.value);
+      const hv = parseFloat(hvSlider.value);
+      const inc = parseFloat(incSlider.value);
+
+      document.getElementById("sarHhVal").textContent = `${hh.toFixed(1)} dB`;
+      document.getElementById("sarHvVal").textContent = `${hv.toFixed(1)} dB`;
+      document.getElementById("sarIncVal").textContent = `${inc}°`;
+
+      const earth = dataset.earth_analogs.find((e) => e.id === selectedEarthId) || dataset.earth_analogs[0];
+      const target = dataset.target_bases.find((t) => t.id === currentTargetId);
+
+      const sarRes = window.SarPolarimetryLab.computeSarMetrics(
+        hh,
+        hv,
+        inc,
+        earth.slope_deg,
+        target.gravity_m_s2
+      );
+
+      document.getElementById("sarDepolVal").textContent = `${sarRes.depolarizationDb} dB`;
+      document.getElementById("sarCorrHhVal").textContent = `${sarRes.correctedHhDb} dB`;
+      document.getElementById("sarRoughnessVal").textContent = `${sarRes.roughnessIndex}`;
+      document.getElementById("sarCprVal").textContent = `${sarRes.estimatedCpr} vs ${target.radar_cpr}`;
+      document.getElementById("sarSlipVal").textContent = `${sarRes.wheelSlipPct}%`;
+      document.getElementById("sarTerrainClassText").textContent = sarRes.terrainClass;
+
+      return sarRes;
+    }
+
+    hhSlider.addEventListener("input", updateSarLabReadout);
+    hvSlider.addEventListener("input", updateSarLabReadout);
+    incSlider.addEventListener("input", updateSarLabReadout);
+
+    applyBtn.addEventListener("click", () => {
+      const sarRes = updateSarLabReadout();
+      const earth = dataset.earth_analogs.find((e) => e.id === selectedEarthId);
+      if (earth) {
+        earth.sar_roughness = sarRes.roughnessIndex;
+        refreshDashboard(false);
+      }
+    });
+
+    updateSarLabReadout();
   }
 
   function applyWeightPreset(presetKey) {
@@ -577,7 +803,15 @@
 
     if (autoSelectTop && allRanked.length > 0) {
       selectedEarthId = allRanked[0].earth.id;
+      if (allRanked.length > 1) {
+        compareSiteBId = allRanked[1].earth.id;
+      }
     }
+
+    const selA = document.getElementById("compareSiteASelect");
+    const selB = document.getElementById("compareSiteBSelect");
+    if (selA) selA.value = selectedEarthId;
+    if (selB) selB.value = compareSiteBId;
 
     const filteredRanked = allRanked.filter((item) => {
       if (!searchFilterText) return true;
@@ -592,7 +826,12 @@
     renderMapMarkers(allRanked);
 
     const activeEntry = allRanked.find((r) => r.earth.id === selectedEarthId) || allRanked[0];
+    const compareBEntry = allRanked.find((r) => r.earth.id === compareSiteBId) || allRanked[1] || activeEntry;
+
     renderInspector(target, activeEntry.earth, activeEntry.scores);
+    renderHeadToHeadComparator(target, activeEntry, compareBEntry);
+    renderDiurnalThermalChart(target, activeEntry.earth);
+    updateTraverseTelemetry();
   }
 
   function renderAnalogCards(ranked) {
@@ -613,7 +852,7 @@
         <div class="progress-track">
           <div class="progress-fill" style="width:${item.scores.overall}%;"></div>
         </div>
-        <div style="font-size:0.69rem; color:#38bdf8; margin-top:0.35rem; display:flex; justify-content:space-between;">
+        <div style="font-size:0.68rem; color:#38bdf8; margin-top:0.35rem; display:flex; justify-content:space-between;">
           <span>Geo: ${item.scores.geology}%</span>
           <span>SAR: ${item.scores.roughness}%</span>
           <span>Slope: ${item.scores.slope}%</span>
@@ -662,6 +901,17 @@
     });
   }
 
+  function buildNormalizedAxisArray(siteObj, isTarget) {
+    return [
+      Math.round(siteObj.basalt_index * 100),
+      Math.round((isTarget ? siteObj.radar_cpr : siteObj.sar_roughness) * 100),
+      Math.round(Math.min(100, (siteObj.slope_deg / 20.0) * 100)),
+      Math.round(Math.min(100, (siteObj.mean_temp_k / 310.0) * 100)),
+      Math.round(siteObj.aridity_index * 100),
+      Math.round(siteObj.ice_potential * 100)
+    ];
+  }
+
   function renderInspector(target, earth, scores) {
     document.getElementById("inspectorTitle").textContent = earth.name;
     document.getElementById("inspectorSubtitle").textContent =
@@ -674,7 +924,6 @@
     document.getElementById("metricSar").textContent = `${earth.sar_roughness} vs ${target.radar_cpr} CPR`;
     document.getElementById("metricPrecip").textContent = `${earth.annual_precip_mm} mm/yr`;
 
-    // Render Hardware & Rover Stress Simulator
     const hwStats = computeHardwareTelemetry(target, earth, selectedHardwareId);
     document.getElementById("simSlipVal").textContent = `${hwStats.slipRiskPct}%`;
     document.getElementById("simDeltaTempVal").textContent = `Δ ${hwStats.deltaTempK} K`;
@@ -695,10 +944,6 @@
       .map((s) => `<li>${s}</li>`)
       .join("");
 
-    updateRadarChart(target, earth);
-  }
-
-  function updateRadarChart(target, earth) {
     const ctx = document.getElementById("telemetryRadarChart").getContext("2d");
     const labels = [
       "Basalt / Geology",
@@ -707,24 +952,6 @@
       "Thermal Regime",
       "Hyper-Aridity",
       "Subsurface Ice"
-    ];
-
-    const targetProfile = [
-      Math.round(target.basalt_index * 100),
-      Math.round(target.radar_cpr * 100),
-      Math.round(Math.min(100, (target.slope_deg / 20.0) * 100)),
-      Math.round(Math.min(100, (target.mean_temp_k / 310.0) * 100)),
-      Math.round(target.aridity_index * 100),
-      Math.round(target.ice_potential * 100)
-    ];
-
-    const earthProfile = [
-      Math.round(earth.basalt_index * 100),
-      Math.round(earth.sar_roughness * 100),
-      Math.round(Math.min(100, (earth.slope_deg / 20.0) * 100)),
-      Math.round(Math.min(100, (earth.mean_temp_k / 310.0) * 100)),
-      Math.round(earth.aridity_index * 100),
-      Math.round(earth.ice_potential * 100)
     ];
 
     if (radarChart) {
@@ -738,7 +965,7 @@
         datasets: [
           {
             label: target.name,
-            data: targetProfile,
+            data: buildNormalizedAxisArray(target, true),
             backgroundColor: "rgba(245, 158, 11, 0.2)",
             borderColor: "#f59e0b",
             pointBackgroundColor: "#f59e0b",
@@ -746,7 +973,7 @@
           },
           {
             label: earth.name,
-            data: earthProfile,
+            data: buildNormalizedAxisArray(earth, false),
             backgroundColor: "rgba(34, 211, 238, 0.22)",
             borderColor: "#22d3ee",
             pointBackgroundColor: "#22d3ee",
@@ -767,7 +994,7 @@
         },
         plugins: {
           legend: {
-            labels: { color: "#f8fafc", boxWidth: 12, font: { size: 10.5 } }
+            labels: { color: "#f8fafc", boxWidth: 12, font: { size: 10 } }
           }
         }
       }
@@ -775,7 +1002,184 @@
   }
 
   // ============================================================================
-  // 5. FULL 60-PAIR MATRIX MODAL & DATA EXPORTS (JSON & CSV)
+  // 5. HEAD-TO-HEAD A/B EARTH ANALOG COMPARATOR (3-DATASET OVERLAY)
+  // ============================================================================
+  function renderHeadToHeadComparator(target, entryA, entryB) {
+    const canvas = document.getElementById("abRadarChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const labels = ["Geology", "SAR Roughness", "Slope", "Thermal", "Aridity", "Ice ISRU"];
+    if (abRadarChart) {
+      abRadarChart.destroy();
+    }
+
+    abRadarChart = new Chart(ctx, {
+      type: "radar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: `Target: ${target.name}`,
+            data: buildNormalizedAxisArray(target, true),
+            backgroundColor: "rgba(245, 158, 11, 0.14)",
+            borderColor: "#f59e0b",
+            borderWidth: 2
+          },
+          {
+            label: `Site A: ${entryA.earth.name}`,
+            data: buildNormalizedAxisArray(entryA.earth, false),
+            backgroundColor: "rgba(34, 211, 238, 0.2)",
+            borderColor: "#22d3ee",
+            borderWidth: 2
+          },
+          {
+            label: `Site B: ${entryB.earth.name}`,
+            data: buildNormalizedAxisArray(entryB.earth, false),
+            backgroundColor: "rgba(16, 185, 129, 0.18)",
+            borderColor: "#10b981",
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: "#1e293b" },
+            grid: { color: "#1e293b" },
+            pointLabels: { color: "#cbd5e1", font: { size: 10 } },
+            ticks: { display: false, min: 0, max: 100 }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: "#f8fafc", boxWidth: 10, font: { size: 9.5 } }
+          }
+        }
+      }
+    });
+
+    const metricsList = [
+      { label: "Overall Weighted Match", key: "overall" },
+      { label: "Basalt / Silicate Geology", key: "geology" },
+      { label: "SAR Radar Roughness", key: "roughness" },
+      { label: "Topographic Slope", key: "slope" },
+      { label: "Thermal Regime", key: "thermal" },
+      { label: "Hyper-Aridity", key: "aridity" },
+      { label: "Subsurface Ice ISRU", key: "ice" }
+    ];
+
+    const tbody = document.getElementById("abComparisonTableBody");
+    tbody.innerHTML = "";
+
+    metricsList.forEach((m) => {
+      const valA = entryA.scores[m.key];
+      const valB = entryB.scores[m.key];
+      const winner = valA > valB ? "Site A" : valB > valA ? "Site B" : "Tie";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${m.label}</td>
+        <td style="color:#22d3ee; font-weight:700;">${valA}%</td>
+        <td style="color:#34d399; font-weight:700;">${valB}%</td>
+        <td><span class="winner-pill">${winner}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const overallWinner =
+      entryA.scores.overall >= entryB.scores.overall ? entryA.earth.name : entryB.earth.name;
+    const diffPct = Math.abs(entryA.scores.overall - entryB.scores.overall).toFixed(1);
+    document.getElementById("abWinnerSummary").textContent =
+      `RECOMMENDED PRIMARY TESTBED: ${overallWinner} (+${diffPct}% advantage)`;
+  }
+
+  // ============================================================================
+  // 6. 24-HOUR DIURNAL THERMAL CYCLE CHART (DAY / NIGHT KELVIN SWING)
+  // ============================================================================
+  function generateDiurnalCurve(minK, maxK) {
+    const hours = [0, 3, 6, 9, 12, 15, 18, 21];
+    return hours.map((h) => {
+      // Peak heating at 15:00 local solar time, trough at 03:00
+      const phase = ((h - 3) / 24.0) * 2 * Math.PI;
+      const norm = (1 - Math.cos(phase)) / 2.0;
+      return Number((minK + (maxK - minK) * norm).toFixed(1));
+    });
+  }
+
+  function renderDiurnalThermalChart(target, earth) {
+    const canvas = document.getElementById("diurnalThermalChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const tMin = target.temp_extremes_k[0];
+    const tMax = target.temp_extremes_k[1];
+    const eMin = earth.temp_extremes_k ? earth.temp_extremes_k[0] : Number((earth.mean_temp_k - 12).toFixed(1));
+    const eMax = earth.temp_extremes_k ? earth.temp_extremes_k[1] : Number((earth.mean_temp_k + 12).toFixed(1));
+
+    const targetSwing = (tMax - tMin).toFixed(1);
+    const earthSwing = (eMax - eMin).toFixed(1);
+
+    document.getElementById("targetDiurnalSwingVal").textContent = `Δ ${targetSwing} K (${tMin}K–${tMax}K)`;
+    document.getElementById("earthDiurnalSwingVal").textContent = `Δ ${earthSwing} K (${eMin}K–${eMax}K)`;
+    document.getElementById("thermalShockVerdict").textContent =
+      `THERMAL GRADIENT: ${target.body} experiences a ${targetSwing} K diurnal swing vs ${earthSwing} K at ${earth.name}.`;
+
+    if (diurnalChart) {
+      diurnalChart.destroy();
+    }
+
+    diurnalChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"],
+        datasets: [
+          {
+            label: `${target.name} (K)`,
+            data: generateDiurnalCurve(tMin, tMax),
+            borderColor: "#f59e0b",
+            backgroundColor: "rgba(245, 158, 11, 0.16)",
+            fill: true,
+            tension: 0.38,
+            borderWidth: 2
+          },
+          {
+            label: `${earth.name} (K)`,
+            data: generateDiurnalCurve(eMin, eMax),
+            borderColor: "#22d3ee",
+            backgroundColor: "rgba(34, 211, 238, 0.16)",
+            fill: true,
+            tension: 0.38,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: "#94a3b8", font: { size: 10 } },
+            grid: { color: "rgba(30, 41, 59, 0.6)" }
+          },
+          y: {
+            ticks: { color: "#cbd5e1", font: { size: 10 } },
+            grid: { color: "rgba(30, 41, 59, 0.6)" },
+            title: { display: true, text: "Surface Temperature (Kelvin)", color: "#94a3b8", font: { size: 10 } }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: "#f8fafc", boxWidth: 11, font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  // ============================================================================
+  // 7. FULL 60-PAIR MATRIX MODAL & DATA EXPORTS (JSON & CSV)
   // ============================================================================
   function setupModalAndExports() {
     const modal = document.getElementById("matrixModal");
@@ -814,14 +1218,14 @@
       if (e.target === modal) modal.classList.remove("open");
     });
 
-    // Export JSON Mission Report
     document.getElementById("exportJsonBtn").addEventListener("click", () => {
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
       const report = {
-        generated_by: "Dark Aero Planetary Analog Decision Support System v2.0",
+        generated_by: "Dark Aero Planetary Analog Decision Support System v3.0",
         target_base: target,
         custom_weights: weights,
         selected_hardware_simulation: selectedHardwareId,
+        plotted_rover_traverse_waypoints: traverseWaypoints,
         ranked_analogs: dataset.earth_analogs
           .map((e) => ({
             earth_analog: e.name,
@@ -838,12 +1242,11 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dark_aero_${currentTargetId}_mission_report.json`;
+      a.download = `dark_aero_${currentTargetId}_mission_report_v3.json`;
       a.click();
       URL.revokeObjectURL(url);
     });
 
-    // Export CSV Matrix
     document.getElementById("exportCsvBtn").addEventListener("click", () => {
       const rows = [
         [
@@ -889,7 +1292,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "dark_aero_analog_comparison_matrix.csv";
+      a.download = "dark_aero_analog_comparison_matrix_v3.csv";
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -899,6 +1302,9 @@
     initPlanetaryGlobe();
     initMap();
     populateTargetDropdown();
+    populateCompareDropdowns();
+    bindInspectorTabs();
+    bindSarPolarimetryLab();
     bindSlidersAndPresets();
     setupModalAndExports();
     refreshDashboard(true);

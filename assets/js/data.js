@@ -1,6 +1,6 @@
-// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset (v2.0)
+// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset (v3.0)
 window.DARK_AERO_DATA = {
-  "project": "Dark Aero - Planetary Analog Decision Support System (v2.0 Mission Control)",
+  "project": "Dark Aero - Planetary Analog Decision Support System (v3.0 Mission Control)",
   "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
   "event": "2026 NASA International Space Apps Challenge",
   "default_weights": {
@@ -23,8 +23,8 @@ window.DARK_AERO_DATA = {
       ],
       "mean_temp_k": 95.0,
       "temp_extremes_k": [
-        40.0,
-        210.0
+        42.0,
+        205.0
       ],
       "slope_deg": 15.2,
       "basalt_index": 0.78,
@@ -52,8 +52,8 @@ window.DARK_AERO_DATA = {
       ],
       "mean_temp_k": 112.0,
       "temp_extremes_k": [
-        55.0,
-        225.0
+        58.0,
+        222.0
       ],
       "slope_deg": 12.4,
       "basalt_index": 0.74,
@@ -80,8 +80,8 @@ window.DARK_AERO_DATA = {
       ],
       "mean_temp_k": 250.0,
       "temp_extremes_k": [
-        95.0,
-        390.0
+        102.0,
+        384.0
       ],
       "slope_deg": 9.8,
       "basalt_index": 0.96,
@@ -136,7 +136,7 @@ window.DARK_AERO_DATA = {
       ],
       "mean_temp_k": 195.0,
       "temp_extremes_k": [
-        150.0,
+        154.0,
         242.0
       ],
       "slope_deg": 3.5,
@@ -165,7 +165,7 @@ window.DARK_AERO_DATA = {
       "mean_temp_k": 224.0,
       "temp_extremes_k": [
         190.0,
-        280.0
+        282.0
       ],
       "slope_deg": 17.5,
       "basalt_index": 0.91,
@@ -193,6 +193,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 320,
       "mean_temp_k": 257.15,
+      "temp_extremes_k": [
+        244.0,
+        269.5
+      ],
       "slope_deg": 14.0,
       "basalt_index": 0.76,
       "sar_roughness": 0.7,
@@ -280,6 +284,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 1650,
       "mean_temp_k": 250.15,
+      "temp_extremes_k": [
+        235.0,
+        264.0
+      ],
       "slope_deg": 13.5,
       "basalt_index": 0.79,
       "sar_roughness": 0.66,
@@ -366,6 +374,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 1050,
       "mean_temp_k": 288.15,
+      "temp_extremes_k": [
+        272.0,
+        308.5
+      ],
       "slope_deg": 7.8,
       "basalt_index": 0.87,
       "sar_roughness": 0.59,
@@ -452,6 +464,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 2500,
       "mean_temp_k": 280.15,
+      "temp_extremes_k": [
+        270.5,
+        293.0
+      ],
       "slope_deg": 11.2,
       "basalt_index": 0.97,
       "sar_roughness": 0.8,
@@ -537,6 +553,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 780,
       "mean_temp_k": 271.15,
+      "temp_extremes_k": [
+        261.0,
+        281.5
+      ],
       "slope_deg": 9.4,
       "basalt_index": 0.95,
       "sar_roughness": 0.77,
@@ -622,6 +642,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 480,
       "mean_temp_k": 254.15,
+      "temp_extremes_k": [
+        240.5,
+        266.0
+      ],
       "slope_deg": 15.0,
       "basalt_index": 0.73,
       "sar_roughness": 0.68,
@@ -707,6 +731,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 410,
       "mean_temp_k": 291.15,
+      "temp_extremes_k": [
+        280.0,
+        304.5
+      ],
       "slope_deg": 8.5,
       "basalt_index": 0.83,
       "sar_roughness": 0.55,
@@ -792,6 +820,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 1290,
       "mean_temp_k": 290.15,
+      "temp_extremes_k": [
+        275.0,
+        307.0
+      ],
       "slope_deg": 14.8,
       "basalt_index": 0.91,
       "sar_roughness": 0.73,
@@ -877,6 +909,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": 2850,
       "mean_temp_k": 274.15,
+      "temp_extremes_k": [
+        258.0,
+        291.5
+      ],
       "slope_deg": 5.2,
       "basalt_index": 0.81,
       "sar_roughness": 0.54,
@@ -962,6 +998,10 @@ window.DARK_AERO_DATA = {
       ],
       "elevation_m": -115,
       "mean_temp_k": 307.15,
+      "temp_extremes_k": [
+        295.0,
+        322.0
+      ],
       "slope_deg": 16.2,
       "basalt_index": 0.93,
       "sar_roughness": 0.75,

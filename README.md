@@ -1,4 +1,4 @@
-# Dark Aero v2.0 — Planetary Analog Decision Support System
+# Dark Aero v3.0 — Planetary Analog Decision Support System
 
 **2026 NASA International Space Apps Challenge**  
 **Challenge:** Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars  
@@ -8,29 +8,30 @@
 
 ## 1. Executive Summary
 
-**Dark Aero v2.0** is an aerospace-grade geospatial decision-support platform and hardware stress simulator designed to identify, rank, and evaluate terrestrial locations on Earth that serve as high-fidelity operational analogs for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
+**Dark Aero v3.0** is a full-stack geospatial decision-support and planetary engineering simulation platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
 
-### What's New in Mission Control v2.0:
-* **Keyless High-Resolution Satellite Map:** Default **Esri World Imagery** + **NASA Worldview GIBS** (`MODIS Terra True Color`, `Blue Marble Next Generation`, and `MODIS Land Surface Temperature`) configured with smooth multi-zoom scaling and zero API key watermarks.
-* **Interactive 3D Planetary Target Globe:** Real-time HTML5 Canvas 3D orbital globe for the Moon and Mars featuring latitude/longitude graticules, drag-to-rotate controls, surface gravity/irradiance telemetry, and an active landing-site beacon.
-* **Live NASA Langley POWER Satellite API Scanner:** Click **anywhere on Earth** on the interactive map to query NASA's live `prediction Of Worldwide Energy Resources (POWER)` satellite climatology API for real-time surface temperature, annual precipitation, and solar irradiance—and add any scanned coordinate directly to the analog ranking list.
-* **Hardware & Rover Field-Test Stress Simulator:** Models mechanical wheel-slip risk, cryogenic thermal delta ($\Delta T$), ISRU drilling power load (Watts), and SAR abrasive regolith wear across four mission systems (*Artemis LTV Rover*, *xEMU Spacesuit*, *TRIDENT Ice Drill*, and *Kilopower Fission Habitat*).
-* **Mission Priority Presets & 60-Pair Matrix Modal:** Instant one-click presets (*Balanced Science*, *ISRU Ice Mining*, *Rover Mobility*, *Lava Tube Habitat*), real-time search filtering, a full 60-pair interactive comparison modal, and one-click **JSON** and **CSV** exports.
+### Complete Mission Control v3.0 Capabilities:
+1. **Interactive 3D Planetary Target Globe:** Real-time HTML5 Canvas 3D orbital globe for the Moon and Mars with drag-to-rotate controls, surface gravity/irradiance telemetry, and active landing-site beacons.
+2. **Keyless High-Resolution Satellite Map & Live NASA POWER API Scanner:** Combines **Esri World Imagery**, **NASA Worldview GIBS** (`MODIS Terra True Color`, `Blue Marble Next Generation`, and `Land Surface Temperature`), and **OpenTopoMap** contours. Clicking anywhere on Earth queries the live **NASA Langley POWER Climatology REST API** for real-time surface temperature, precipitation, and solar flux.
+3. **Rover & EVA Traverse Path Planner:** Toggle **Plot Rover Traverse** mode on the satellite map to place waypoints, calculate Haversine route distance ($\text{km}$), estimate rover battery draw ($\text{Wh}$), and evaluate slope hazards.
+4. **Head-to-Head A/B Earth Analog Comparator:** Overlays two terrestrial analog candidates against the selected extraterrestrial base on a 3-dataset radar plot with a parameter-by-parameter winner breakdown.
+5. **24-Hour Diurnal Thermal Cycle Chart:** Plots local solar day/night Kelvin temperature swings comparing **NASA LRO Diviner / Mars MEDA** profiles against terrestrial **MODIS LST** data.
+6. **Interactive CSA RADARSAT SAR Polarimetry Lab & Hardware Stress Simulator:** Calibrates C-band $HH/HV$ radar backscatter and incidence angles in the browser and models wheel-slip risk, cryogenic thermal delta ($\Delta T$), power load ($\text{W}$), and abrasive regolith wear across *Artemis LTV Rover*, *xEMU Spacesuit*, *TRIDENT Ice Drill*, and *Kilopower Fission Habitat*.
 
 ---
 
-## 2. Multi-Agency Space Datasets & APIs Integrated
+## 2. Space Agency Datasets & APIs Used
 
-| Space Agency | Dataset / API Portal | Role in Dark Aero v2.0 Architecture |
+| Space Agency | Dataset / API Portal | Role in Dark Aero v3.0 Architecture |
 | :--- | :--- | :--- |
-| **NASA** | **LRO Diviner Lunar Radiometer** | Benchmark polar cryogenic surface temperatures (95 K–112 K) and permanently shadowed crater volatility metrics at Shackleton Crater and Malapert Massif. |
+| **NASA** | **LRO Diviner Lunar Radiometer** | Polar cryogenic surface temperatures (95 K–112 K), diurnal thermal extremes, and silicate mineralogy indices. |
 | **NASA** | **LRO Mini-RF & LOLA** | S/X-band radar Circular Polarization Ratio (CPR) for regolith blockiness and laser altimetry slope gradients. |
-| **NASA** | **Langley POWER REST API** | Live point-query satellite climatology (`TS`, `PRECTOTCORR`, `ALLSKY_SFC_SW_DWN`) for any user-clicked coordinate on Earth. |
-| **NASA** | **Planetary Data System (PDS)** | Mars 2020 MEDA meteorology, MRO CRISM sulfate/phyllosilicate mineralogy, and SHARAD subsurface ice radar profiles. |
-| **NASA** | **NASA Worldview (GIBS) & Earthdata Search** | Live WMTS satellite map tiles (`MODIS_Terra_CorrectedReflectance_TrueColor`, `BlueMarble_NextGeneration`, and `MODIS_Terra_Land_Surface_Temp_Day`). |
-| **CSA** | **RADARSAT-1 & RADARSAT Constellation Mission (RCM)** | C-band Synthetic Aperture Radar (SAR) HH/HV backscatter roughness indices across Arctic impact craters (Devon Island, Axel Heiberg) and basaltic lava flows. |
-| **ESA** | **Copernicus Data Space & Open Science Catalog** | Sentinel-1 InSAR surface roughness and Sentinel-2 hyperspectral iron-oxide/sulfate surface reflectance indices. |
-| **JAXA** | **JAXA G-Portal** | Global precipitation, hyper-aridity confirmation, and cryosphere snow/ice cover records. |
+| **NASA** | **Langley POWER REST API** | Live point-coordinate satellite climatology (`TS`, `PRECTOTCORR`, `ALLSKY_SFC_SW_DWN`) for any clicked location on Earth. |
+| **NASA** | **Planetary Data System (PDS)** | Mars 2020 Perseverance MEDA meteorology, MRO CRISM mineralogy, and SHARAD subsurface ice radar profiles. |
+| **NASA** | **NASA Worldview (GIBS) & Earthdata** | Live WMTS satellite map tiles (`MODIS_Terra_CorrectedReflectance_TrueColor`, `BlueMarble_NextGeneration`, `MODIS_Terra_Land_Surface_Temp_Day`). |
+| **CSA** | **RADARSAT-1 & RCM + SAR Python Tutorial** | C-band Synthetic Aperture Radar (SAR) $HH/HV$ backscatter calibration across Arctic impact craters and volcanic lava fields. |
+| **ESA** | **Copernicus Data Space & Open Science Catalog** | Sentinel-1 InSAR surface roughness and Sentinel-2 iron-oxide/sulfate spectral reflectance indices. |
+| **JAXA** | **JAXA G-Portal** | Global precipitation, hyper-aridity verification, and cryosphere snow/ice cover records. |
 
 ---
 
@@ -38,8 +39,8 @@
 
 ```text
 dark-aero-nasa-space-apps-2026/
-├── index.html                        # Main Mission Control v2.0 web application
-├── README.md                         # Comprehensive technical documentation
+├── index.html                        # Main Mission Control v3.0 web application
+├── README.md                         # Project documentation for NASA Space Apps judges
 ├── LICENSE                           # MIT Open-Source License
 ├── requirements.txt                  # Optional Python dependencies for data pipelines
 ├── assets/
@@ -47,28 +48,19 @@ dark-aero-nasa-space-apps-2026/
 │   │   └── styles.css                # Aerospace glassmorphism HUD stylesheet
 │   └── js/
 │       ├── data.js                   # Pre-compiled multi-agency planetary dataset bundle
-│       └── app.js                    # 3D Globe, NASA POWER API scanner, Hardware Simulator & Map controller
+│       ├── sar-lab.js                # Real-time CSA RADARSAT SAR polarimetry & rover slip module
+│       └── app.js                    # 3D Globe, NASA POWER scanner, Rover Traverse, A/B Comparator & Charts
 ├── data/
 │   ├── nasa_analog_matches.json      # Structured JSON output generated by the Python matching engine
 │   └── analog_comparison_matrix.csv  # Tabular compatibility matrix (60 target-to-Earth pair evaluations)
 └── scripts/
     ├── analog_matching_engine.py     # Core Python multi-criteria scoring & dataset export pipeline
-    └── sar_roughness_analyzer.py     # CSA RADARSAT-1 / NASA LRO Mini-RF SAR backscatter & rover slip calculator
+    └── sar_roughness_analyzer.py     # CSA RADARSAT-1 / NASA LRO Mini-RF SAR backscatter & rover slip script
 ```
 
 ---
 
-## 4. Deployment & Updating GitHub Pages
-
-```bash
-git add .
-git commit -m "Upgrade to Dark Aero v2.0: 3D Planetary Globe, Live NASA POWER API Scanner, Hardware Simulator & Keyless Satellite Map"
-git push origin main
-```
-
----
-
-## 5. Team Dark Aero Roster
+## 4. Team Dark Aero Roster
 
 * **Albert Lawrence B. Robiñol** (`@charmanderthegreat`) — Team Owner / Lead Full-Stack & Systems Architect
 * **Luke Edward Schofield** (`@luke_schofield`) — Software Engineering & Backend Data Lead

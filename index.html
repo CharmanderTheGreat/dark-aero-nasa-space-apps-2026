@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Aero v2.0 | Planetary Analog Decision Support System (NASA Space Apps 2026)</title>
+  <title>Dark Aero v3.0 | Planetary Analog Mission Control (NASA Space Apps 2026)</title>
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,16 +26,16 @@
       <div class="brand-title">
         <h1>
           Planetary Analog Decision Support System
-          <span class="version-tag">MISSION CONTROL v2.0</span>
+          <span class="version-tag">MISSION CONTROL v3.0</span>
         </h1>
-        <p>2026 NASA International Space Apps Challenge &bull; Multi-Agency Moon &amp; Mars Analog Engine</p>
+        <p>2026 NASA International Space Apps Challenge &bull; Multi-Agency Moon &amp; Mars Analog Suite</p>
       </div>
     </div>
 
     <div class="telemetry-status-bar">
       <span class="status-pill"><span class="pulse-dot"></span>NASA GIBS WMTS &amp; Esri Orbital</span>
-      <span class="status-pill"><span class="pulse-dot amber"></span>NASA POWER Live API Scanner</span>
-      <span class="status-pill"><span class="pulse-dot"></span>CSA RADARSAT SAR &amp; LRO Diviner</span>
+      <span class="status-pill"><span class="pulse-dot amber"></span>NASA POWER Live API</span>
+      <span class="status-pill"><span class="pulse-dot"></span>CSA RADARSAT SAR Lab</span>
       <span class="status-pill">ESA Copernicus &amp; JAXA G-Portal</span>
     </div>
 
@@ -52,12 +52,12 @@
     <section class="panel">
       <div class="panel-header">
         <h2>1. Extraterrestrial Target &amp; 3D Globe</h2>
-        <span style="font-size: 0.68rem; color: #94a3b8;">Drag globe to rotate</span>
+        <span style="font-size: 0.67rem; color: #94a3b8;">Drag globe to rotate</span>
       </div>
 
       <!-- Interactive 3D Planetary Target Globe -->
       <div class="globe-widget">
-        <canvas id="planetaryGlobeCanvas" width="236" height="236"></canvas>
+        <canvas id="planetaryGlobeCanvas" width="224" height="224"></canvas>
         <div class="globe-telemetry">
           <span id="globeBodyBadge" class="globe-body-badge moon">MOON ORBITAL TARGET</span>
           <div class="globe-stat-row">
@@ -72,7 +72,7 @@
             <span>Solar Irradiance:</span>
             <strong id="globeSolarText">1361 W/m²</strong>
           </div>
-          <div style="font-size: 0.65rem; color: #38bdf8; margin-top: 0.15rem;">
+          <div style="font-size: 0.64rem; color: #38bdf8; margin-top: 0.14rem;">
             ● Glowing Beacon = Active Landing Site
           </div>
         </div>
@@ -85,9 +85,9 @@
 
       <div id="targetSummaryBox" class="target-summary-card"></div>
 
-      <div class="panel-header" style="margin-top: 0.15rem;">
+      <div class="panel-header" style="margin-top: 0.1rem;">
         <h2>2. Mission Priority Presets &amp; Weights</h2>
-        <button id="resetWeightsBtn" class="btn-action" style="padding: 0.2rem 0.5rem; font-size: 0.68rem;">Reset</button>
+        <button id="resetWeightsBtn" class="btn-action" style="padding: 0.18rem 0.48rem; font-size: 0.67rem;">Reset</button>
       </div>
 
       <div class="preset-grid">
@@ -97,7 +97,7 @@
         <button class="preset-btn" data-preset="lava_habitat">Lava Tube Habitat</button>
       </div>
 
-      <div class="control-group" style="margin-top: 0.2rem;">
+      <div class="control-group" style="margin-top: 0.15rem;">
         <div class="slider-row">
           <label><span>Basalt &amp; Silicate Geology (PDS/ESA)</span><span id="val-geology" class="weight-val">25%</span></label>
           <input type="range" id="weight-geology" min="0" max="100" value="25" />
@@ -130,42 +130,61 @@
       </div>
     </section>
 
-    <!-- Center Column: Interactive Satellite Map, Live NASA POWER API Scanner & Ranked Candidates -->
+    <!-- Center Column: Interactive Satellite Map, Rover Traverse Planner & NASA POWER Scanner -->
     <section class="center-column">
       <div class="panel" style="padding: 0.85rem;">
         <div class="map-toolbar">
           <span>
-            <strong>Interactive Orbital Satellite Map</strong> &mdash; Click any marker to inspect, or <strong>click anywhere on Earth</strong> to run a live NASA POWER Satellite scan
+            <strong>Orbital Satellite Map</strong> &mdash; Toggle Rover Traverse mode or click Earth to scan NASA POWER API
           </span>
-          <span style="color: #22d3ee; font-weight: 600;">Layers: Esri Satellite + NASA GIBS MODIS</span>
+          <div class="map-tool-buttons">
+            <button id="toggleTraverseBtn" class="btn-action" style="padding: 0.28rem 0.58rem; font-size: 0.7rem;">
+              Plot Rover Traverse: OFF
+            </button>
+            <button id="clearTraverseBtn" class="btn-action" style="padding: 0.28rem 0.52rem; font-size: 0.7rem;">
+              Clear Route
+            </button>
+          </div>
         </div>
 
         <div id="map"></div>
 
-        <!-- Live NASA Langley POWER Satellite API Telemetry Bar -->
-        <div class="live-scanner-bar">
-          <div class="scanner-metrics">
-            <span class="scanner-badge">LIVE NASA POWER API SCANNER</span>
-            <span id="scannerStatusText" style="color: #cbd5e1;">
-              Click any coordinate on the map above to fetch live NASA Langley satellite temperature, precipitation &amp; solar flux.
-            </span>
+        <!-- Telemetry Scanners & Rover Traverse Bars -->
+        <div class="scanner-stack">
+          <div class="live-scanner-bar">
+            <div class="scanner-metrics">
+              <span class="scanner-badge">LIVE NASA POWER API SCANNER</span>
+              <span id="scannerStatusText" style="color: #cbd5e1;">
+                Click any coordinate on the map above to fetch live NASA Langley satellite temperature, precipitation &amp; solar flux.
+              </span>
+            </div>
+            <button id="addScannedSiteBtn" class="btn-action primary" style="display: none; padding: 0.28rem 0.6rem; font-size: 0.69rem;">
+              + Add Scanned Site
+            </button>
           </div>
-          <button id="addScannedSiteBtn" class="btn-action primary" style="display: none; padding: 0.3rem 0.65rem; font-size: 0.7rem;">
-            + Add Scanned Site to Rankings
-          </button>
+
+          <div class="traverse-bar">
+            <div class="scanner-metrics">
+              <span class="scanner-badge cyan">ROVER EVA TRAVERSE PLANNER</span>
+              <span>Route Distance: <strong id="traverseDistanceText" style="color:#22d3ee;">0.00 km</strong></span>
+              <span>Battery Draw: <strong id="traverseEnergyText" style="color:#34d399;">0 Wh</strong></span>
+              <span>Est. Time: <strong id="traverseTimeText" style="color:#f8fafc;">0.0 hrs</strong></span>
+              <span>Slope Hazard: <strong id="traverseHazardText" style="color:#fbbf24;">Ready</strong></span>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="panel" style="flex: 1;">
         <div class="panel-header">
           <h2>Ranked Terrestrial Analog Candidates</h2>
-          <div style="width: 220px;">
+          <div style="width: 215px;">
             <input
               type="text"
               id="candidateSearchInput"
               class="text-input"
               placeholder="Search site, country, or tag..."
-              style="padding: 0.32rem 0.6rem; font-size: 0.74rem;"
+              style="padding: 0.3rem 0.58rem; font-size: 0.73rem;"
             />
           </div>
         </div>
@@ -173,94 +192,221 @@
       </div>
     </section>
 
-    <!-- Right Column: Side-by-Side Telemetry Inspector & Hardware Stress Simulator -->
+    <!-- Right Column: 4-Tab Engineering & Telemetry Inspector -->
     <section class="panel">
       <div class="panel-header">
-        <h2>3. Analog Telemetry Inspector</h2>
+        <h2>3. Engineering &amp; Telemetry Suite</h2>
         <span id="inspectorOverallScore" class="score-badge">--%</span>
       </div>
 
       <div>
-        <h3 id="inspectorTitle" style="font-size: 0.98rem; font-weight: 800;">Select Site</h3>
-        <p id="inspectorSubtitle" style="font-size: 0.73rem; color: #22d3ee; margin-bottom: 0.35rem;"></p>
-        <p id="inspectorSummary" style="font-size: 0.75rem; color: #cbd5e1;"></p>
+        <h3 id="inspectorTitle" style="font-size: 0.96rem; font-weight: 800;">Select Site</h3>
+        <p id="inspectorSubtitle" style="font-size: 0.72rem; color: #22d3ee;"></p>
       </div>
 
-      <div class="metric-grid">
-        <div class="metric-box">
-          <div class="label">Mean Surface Temp</div>
-          <div id="metricTemp" class="value">--</div>
-        </div>
-        <div class="metric-box">
-          <div class="label">Terrain Slope</div>
-          <div id="metricSlope" class="value">--</div>
-        </div>
-        <div class="metric-box">
-          <div class="label">SAR / Radar Roughness</div>
-          <div id="metricSar" class="value">--</div>
-        </div>
-        <div class="metric-box">
-          <div class="label">JAXA Annual Precip</div>
-          <div id="metricPrecip" class="value">--</div>
-        </div>
+      <!-- 4-Tab Switcher -->
+      <div class="inspector-tabs">
+        <button class="tab-btn active" data-tab="tab-overview">Telemetry &amp; Sim</button>
+        <button class="tab-btn" data-tab="tab-compare">A/B Comparator</button>
+        <button class="tab-btn" data-tab="tab-thermal">24h Thermal</button>
+        <button class="tab-btn" data-tab="tab-sar">SAR Polarimetry</button>
       </div>
 
-      <div class="chart-container">
-        <canvas id="telemetryRadarChart"></canvas>
-      </div>
+      <!-- TAB 1: OVERVIEW, RADAR TELEMETRY & HARDWARE STRESS SIMULATOR -->
+      <div id="tab-overview" class="tab-pane active">
+        <p id="inspectorSummary" style="font-size: 0.74rem; color: #cbd5e1;"></p>
 
-      <!-- 4. Hardware & Rover Field-Test Stress Simulator -->
-      <div class="simulator-box">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.73rem; font-weight: 800; color: #22d3ee; text-transform: uppercase;">
-            4. Hardware &amp; Rover Field-Test Simulator
-          </span>
-          <span style="font-size: 0.65rem; color: #94a3b8;">Engineering Stress Model</span>
-        </div>
-
-        <select id="hardwareSystemSelect" class="select-input" style="padding: 0.4rem 0.55rem; font-size: 0.75rem;">
-          <option value="ltv_rover">Artemis Lunar Terrain Vehicle (LTV / Pressurized Rover)</option>
-          <option value="xemu_suit">xEMU / Axiom Extravehicular Mobility Spacesuit</option>
-          <option value="trident_drill">TRIDENT Cryogenic Regolith &amp; Ice Drill (ISRU)</option>
-          <option value="fission_habitat">Kilopower Fission Surface Habitat Array</option>
-        </select>
-
-        <div class="sim-gauge-grid">
-          <div class="sim-gauge-item">
-            <div class="g-label">Wheel Slip / Traction Risk</div>
-            <div id="simSlipVal" class="g-val" style="color: #fbbf24;">--%</div>
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="label">Mean Surface Temp</div>
+            <div id="metricTemp" class="value">--</div>
           </div>
-          <div class="sim-gauge-item">
-            <div class="g-label">Cryogenic Thermal Delta</div>
-            <div id="simDeltaTempVal" class="g-val" style="color: #38bdf8;">-- K</div>
+          <div class="metric-box">
+            <div class="label">Terrain Slope</div>
+            <div id="metricSlope" class="value">--</div>
           </div>
-          <div class="sim-gauge-item">
-            <div class="g-label">ISRU / System Power Load</div>
-            <div id="simPowerVal" class="g-val" style="color: #34d399;">-- W</div>
+          <div class="metric-box">
+            <div class="label">SAR / Radar Roughness</div>
+            <div id="metricSar" class="value">--</div>
           </div>
-          <div class="sim-gauge-item">
-            <div class="g-label">SAR Abrasive Regolith Wear</div>
-            <div id="simWearVal" class="g-val" style="color: #f43f5e;">--%</div>
+          <div class="metric-box">
+            <div class="label">JAXA Annual Precip</div>
+            <div id="metricPrecip" class="value">--</div>
           </div>
         </div>
 
-        <div id="simVerdictBanner" class="verdict-banner optimal">
-          OPTIMAL ANALOG TESTBED
+        <div class="chart-container">
+          <canvas id="telemetryRadarChart"></canvas>
+        </div>
+
+        <!-- Hardware & Rover Field-Test Stress Simulator -->
+        <div class="simulator-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.71rem; font-weight: 800; color: #22d3ee; text-transform: uppercase;">
+              Hardware &amp; Rover Field-Test Simulator
+            </span>
+            <span style="font-size: 0.64rem; color: #94a3b8;">Stress Model</span>
+          </div>
+
+          <select id="hardwareSystemSelect" class="select-input" style="padding: 0.38rem 0.52rem; font-size: 0.74rem;">
+            <option value="ltv_rover">Artemis Lunar Terrain Vehicle (LTV / Pressurized Rover)</option>
+            <option value="xemu_suit">xEMU / Axiom Extravehicular Mobility Spacesuit</option>
+            <option value="trident_drill">TRIDENT Cryogenic Regolith &amp; Ice Drill (ISRU)</option>
+            <option value="fission_habitat">Kilopower Fission Surface Habitat Array</option>
+          </select>
+
+          <div class="sim-gauge-grid">
+            <div class="sim-gauge-item">
+              <div class="g-label">Wheel Slip / Traction Risk</div>
+              <div id="simSlipVal" class="g-val" style="color: #fbbf24;">--%</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">Cryogenic Thermal Delta</div>
+              <div id="simDeltaTempVal" class="g-val" style="color: #38bdf8;">-- K</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">ISRU / System Power Load</div>
+              <div id="simPowerVal" class="g-val" style="color: #34d399;">-- W</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">SAR Abrasive Regolith Wear</div>
+              <div id="simWearVal" class="g-val" style="color: #f43f5e;">--%</div>
+            </div>
+          </div>
+
+          <div id="simVerdictBanner" class="verdict-banner optimal">
+            OPTIMAL ANALOG TESTBED
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.69rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.25rem;">
+            RECOMMENDED MISSION TESTING APPLICATIONS
+          </div>
+          <div id="inspectorTags" class="tag-list"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.69rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.25rem;">
+            VERIFIED SPACE AGENCY DATA SOURCES
+          </div>
+          <ul id="inspectorSources" class="source-list"></ul>
         </div>
       </div>
 
-      <div>
-        <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">
-          RECOMMENDED MISSION TESTING APPLICATIONS
+      <!-- TAB 2: HEAD-TO-HEAD A/B EARTH ANALOG COMPARATOR -->
+      <div id="tab-compare" class="tab-pane">
+        <div class="metric-grid">
+          <div class="control-group">
+            <label for="compareSiteASelect" style="color:#22d3ee;">Candidate A (Cyan)</label>
+            <select id="compareSiteASelect" class="select-input" style="font-size:0.73rem; padding:0.38rem;"></select>
+          </div>
+          <div class="control-group">
+            <label for="compareSiteBSelect" style="color:#34d399;">Candidate B (Emerald)</label>
+            <select id="compareSiteBSelect" class="select-input" style="font-size:0.73rem; padding:0.38rem;"></select>
+          </div>
         </div>
-        <div id="inspectorTags" class="tag-list"></div>
+
+        <div class="chart-container tall">
+          <canvas id="abRadarChart"></canvas>
+        </div>
+
+        <table class="ab-table">
+          <thead>
+            <tr>
+              <th>Planetary Criterion</th>
+              <th>Site A</th>
+              <th>Site B</th>
+              <th>Winner</th>
+            </tr>
+          </thead>
+          <tbody id="abComparisonTableBody"></tbody>
+        </table>
+
+        <div id="abWinnerSummary" class="verdict-banner optimal">
+          RECOMMENDED PRIMARY TESTBED
+        </div>
       </div>
 
-      <div>
-        <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">
-          VERIFIED SPACE AGENCY DATA SOURCES
+      <!-- TAB 3: 24-HOUR DIURNAL THERMAL CYCLE CHART -->
+      <div id="tab-thermal" class="tab-pane">
+        <p style="font-size: 0.74rem; color: #cbd5e1;">
+          Compares 24-hour local solar day/night surface temperature cycles (Kelvin) derived from <strong>NASA LRO Diviner / Mars MEDA</strong> against terrestrial <strong>NASA MODIS Land Surface Temperature</strong> records.
+        </p>
+
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="label">Target Diurnal Swing</div>
+            <div id="targetDiurnalSwingVal" class="value" style="color:#fbbf24;">-- K</div>
+          </div>
+          <div class="metric-box">
+            <div class="label">Earth Analog Swing</div>
+            <div id="earthDiurnalSwingVal" class="value">-- K</div>
+          </div>
         </div>
-        <ul id="inspectorSources" class="source-list"></ul>
+
+        <div class="chart-container tall">
+          <canvas id="diurnalThermalChart"></canvas>
+        </div>
+
+        <div id="thermalShockVerdict" class="verdict-banner moderate">
+          THERMAL GRADIENT TELEMETRY
+        </div>
+      </div>
+
+      <!-- TAB 4: INTERACTIVE CSA RADARSAT SAR POLARIMETRY LAB -->
+      <div id="tab-sar" class="tab-pane">
+        <p style="font-size: 0.73rem; color: #cbd5e1;">
+          Calibrate C-band Synthetic Aperture Radar (SAR) backscatter from <strong>CSA RADARSAT-1 / RCM</strong> scenes to compute incidence-corrected roughness and <strong>NASA LRO Mini-RF</strong> CPR equivalents.
+        </p>
+
+        <div class="simulator-box">
+          <div class="slider-row">
+            <label><span>Co-Pol Backscatter &sigma;⁰<sub>HH</sub> (dB)</span><span id="sarHhVal" class="weight-val">-6.8 dB</span></label>
+            <input type="range" id="sarHhSlider" min="-20" max="-2" step="0.2" value="-6.8" />
+          </div>
+
+          <div class="slider-row">
+            <label><span>Cross-Pol Backscatter &sigma;⁰<sub>HV</sub> (dB)</span><span id="sarHvVal" class="weight-val">-12.4 dB</span></label>
+            <input type="range" id="sarHvSlider" min="-26" max="-6" step="0.2" value="-12.4" />
+          </div>
+
+          <div class="slider-row">
+            <label><span>Radar Incidence Angle &theta; (deg)</span><span id="sarIncVal" class="weight-val">34°</span></label>
+            <input type="range" id="sarIncSlider" min="20" max="50" step="1" value="34" />
+          </div>
+
+          <div class="sim-gauge-grid" style="margin-top:0.25rem;">
+            <div class="sim-gauge-item">
+              <div class="g-label">Depolarization (HV - HH)</div>
+              <div id="sarDepolVal" class="g-val">-5.60 dB</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">Incidence-Corrected HH</div>
+              <div id="sarCorrHhVal" class="g-val">-5.59 dB</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">Normalized SAR Roughness</div>
+              <div id="sarRoughnessVal" class="g-val" style="color:#22d3ee;">0.776</div>
+            </div>
+            <div class="sim-gauge-item">
+              <div class="g-label">Est. CPR vs Target Base</div>
+              <div id="sarCprVal" class="g-val" style="color:#fbbf24;">0.598</div>
+            </div>
+          </div>
+
+          <div class="metric-box" style="margin-top:0.2rem;">
+            <div class="label">Classified Surface &amp; Rover Wheel-Slip Risk</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.15rem;">
+              <span id="sarTerrainClassText" style="font-size:0.74rem; font-weight:700; color:#f8fafc;">Blocky Basalt</span>
+              <span id="sarSlipVal" style="font-size:0.84rem; font-weight:800; color:#34d399;">42.0%</span>
+            </div>
+          </div>
+
+          <button id="applySarToSiteBtn" class="btn-action primary" style="justify-content:center; margin-top:0.25rem;">
+            Apply Calibrated SAR Roughness to Selected Site
+          </button>
+        </div>
       </div>
     </section>
   </main>
@@ -308,8 +454,9 @@
   ></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- Application Data & Mission Control Logic -->
+  <!-- Application Data, SAR Lab & Mission Control Logic -->
   <script src="assets/js/data.js"></script>
+  <script src="assets/js/sar-lab.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
 </html>

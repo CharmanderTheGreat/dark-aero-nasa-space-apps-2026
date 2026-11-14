@@ -1,9 +1,9 @@
 """
-Dark Aero - Multi-Agency Planetary Analog Matching Engine (v2.0)
+Dark Aero - Multi-Agency Planetary Analog Matching Engine (v3.0)
 2026 NASA International Space Apps Challenge
 Challenge: Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars
 
-This module integrates planetary science metrics and hardware stress models from:
+This module integrates planetary science metrics, diurnal thermal regimes, and hardware stress models from:
 - NASA Lunar Reconnaissance Orbiter (LRO Diviner, LOLA, Mini-RF, LEND)
 - NASA Planetary Data System (PDS) - Mars 2020 MEDA, MRO CRISM, MOLA, SHARAD
 - NASA Earthdata Search, NASA Worldview (GIBS), and NASA Langley POWER API
@@ -27,8 +27,8 @@ class ExtraterrestrialBase:
     body: str  # "Moon" or "Mars"
     region: str
     coordinates: List[float]  # [lat, lon]
-    mean_temp_k: float        # Surface temperature in Kelvin (LRO Diviner / Mars MEDA)
-    temp_extremes_k: List[float]
+    mean_temp_k: float        # Mean surface temperature in Kelvin (LRO Diviner / Mars MEDA)
+    temp_extremes_k: List[float]  # [Diurnal Min K, Diurnal Max K]
     slope_deg: float          # Mean terrain slope in degrees (LOLA / MOLA)
     basalt_index: float       # Basaltic / volcanic silicate similarity (0.0 - 1.0)
     radar_cpr: float          # Circular Polarization Ratio / SAR surface roughness (0.0 - 1.0)
@@ -48,6 +48,7 @@ class EarthAnalogSite:
     coordinates: List[float]  # [lat, lon]
     elevation_m: int
     mean_temp_k: float        # Derived from NASA MODIS Land Surface Temp
+    temp_extremes_k: List[float]  # [Diurnal Min K, Diurnal Max K]
     slope_deg: float          # Derived from NASA ASTER GDEM / SRTM
     basalt_index: float       # Derived from ESA Sentinel-2 / USGS Spectral Library
     sar_roughness: float      # Derived from CSA RADARSAT-1 / RCM C-band SAR backscatter
@@ -111,7 +112,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             region="Lunar South Pole (89.9°S, 0.0°E)",
             coordinates=[-89.9, 0.0],
             mean_temp_k=95.0,
-            temp_extremes_k=[40.0, 210.0],
+            temp_extremes_k=[42.0, 205.0],
             slope_deg=15.2,
             basalt_index=0.78,
             radar_cpr=0.72,
@@ -134,7 +135,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             region="Lunar South Polar Highlands (86.0°S, 2.7°E)",
             coordinates=[-86.0, 2.7],
             mean_temp_k=112.0,
-            temp_extremes_k=[55.0, 225.0],
+            temp_extremes_k=[58.0, 222.0],
             slope_deg=12.4,
             basalt_index=0.74,
             radar_cpr=0.64,
@@ -156,7 +157,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             region="Nearside Procellarum Basin (23.7°N, 47.4°W)",
             coordinates=[23.7, -47.4],
             mean_temp_k=250.0,
-            temp_extremes_k=[95.0, 390.0],
+            temp_extremes_k=[102.0, 384.0],
             slope_deg=9.8,
             basalt_index=0.96,
             radar_cpr=0.81,
@@ -200,7 +201,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             region="Northern Lowlands (46.7°N, 188.0°E)",
             coordinates=[46.7, -172.0],
             mean_temp_k=195.0,
-            temp_extremes_k=[150.0, 242.0],
+            temp_extremes_k=[154.0, 242.0],
             slope_deg=3.5,
             basalt_index=0.82,
             radar_cpr=0.52,
@@ -222,7 +223,7 @@ def get_target_bases() -> List[ExtraterrestrialBase]:
             region="Equatorial Rift Canyon (10.3°S, 72.5°W)",
             coordinates=[-10.3, -72.5],
             mean_temp_k=224.0,
-            temp_extremes_k=[190.0, 280.0],
+            temp_extremes_k=[190.0, 282.0],
             slope_deg=17.5,
             basalt_index=0.91,
             radar_cpr=0.76,
@@ -249,6 +250,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[75.3833, -89.6667],
             elevation_m=320,
             mean_temp_k=257.15,
+            temp_extremes_k=[244.0, 269.5],
             slope_deg=14.0,
             basalt_index=0.76,
             sar_roughness=0.70,
@@ -272,6 +274,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[-77.4667, 162.5167],
             elevation_m=1650,
             mean_temp_k=250.15,
+            temp_extremes_k=[235.0, 264.0],
             slope_deg=13.5,
             basalt_index=0.79,
             sar_roughness=0.66,
@@ -295,6 +298,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[-24.0886, -69.9144],
             elevation_m=1050,
             mean_temp_k=288.15,
+            temp_extremes_k=[272.0, 308.5],
             slope_deg=7.8,
             basalt_index=0.87,
             sar_roughness=0.59,
@@ -318,6 +322,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[19.6014, -155.4858],
             elevation_m=2500,
             mean_temp_k=280.15,
+            temp_extremes_k=[270.5, 293.0],
             slope_deg=11.2,
             basalt_index=0.97,
             sar_roughness=0.80,
@@ -340,6 +345,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[64.8700, -16.8300],
             elevation_m=780,
             mean_temp_k=271.15,
+            temp_extremes_k=[261.0, 281.5],
             slope_deg=9.4,
             basalt_index=0.95,
             sar_roughness=0.77,
@@ -362,6 +368,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[79.4167, -90.7500],
             elevation_m=480,
             mean_temp_k=254.15,
+            temp_extremes_k=[240.5, 266.0],
             slope_deg=15.0,
             basalt_index=0.73,
             sar_roughness=0.68,
@@ -384,6 +391,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[37.7025, -6.5597],
             elevation_m=410,
             mean_temp_k=291.15,
+            temp_extremes_k=[280.0, 304.5],
             slope_deg=8.5,
             basalt_index=0.83,
             sar_roughness=0.55,
@@ -406,6 +414,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[31.9722, -106.9653],
             elevation_m=1290,
             mean_temp_k=290.15,
+            temp_extremes_k=[275.0, 307.0],
             slope_deg=14.8,
             basalt_index=0.91,
             sar_roughness=0.73,
@@ -428,6 +437,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[38.0667, 93.1333],
             elevation_m=2850,
             mean_temp_k=274.15,
+            temp_extremes_k=[258.0, 291.5],
             slope_deg=5.2,
             basalt_index=0.81,
             sar_roughness=0.54,
@@ -450,6 +460,7 @@ def get_earth_analogs() -> List[EarthAnalogSite]:
             coordinates=[13.6000, 40.6667],
             elevation_m=-115,
             mean_temp_k=307.15,
+            temp_extremes_k=[295.0, 322.0],
             slope_deg=16.2,
             basalt_index=0.93,
             sar_roughness=0.75,
@@ -474,7 +485,7 @@ def export_datasets(output_dir: str):
     analogs = get_earth_analogs()
 
     payload = {
-        "project": "Dark Aero - Planetary Analog Decision Support System (v2.0 Mission Control)",
+        "project": "Dark Aero - Planetary Analog Decision Support System (v3.0 Mission Control)",
         "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
         "event": "2026 NASA International Space Apps Challenge",
         "default_weights": matcher.weights,
