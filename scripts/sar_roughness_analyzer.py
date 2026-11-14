@@ -1,9 +1,6 @@
 """
 Dark Aero - Synthetic Aperture Radar (SAR) Surface Roughness & CPR Analyzer
 Based on CSA RADARSAT-1 / RCM SAR Python Tutorial & NASA LRO Mini-RF Polarimetry
-
-Computes radar backscatter roughness indices, Circular Polarization Ratios (CPR),
-and rover wheel-slip mechanical traction risk across planetary analog surfaces.
 """
 
 import math
@@ -12,11 +9,6 @@ from typing import Dict
 
 
 def calculate_circular_polarization_ratio(sigma_sc_db: float, sigma_oc_db: float) -> float:
-    """
-    Calculates Circular Polarization Ratio (CPR) from Same-Sense (SC) and
-    Opposite-Sense (OC) circular radar backscatter in decibels (dB).
-    High CPR (> 0.6) indicates either blocky fresh ejecta or coherent volumetric water-ice reflections.
-    """
     linear_sc = 10.0 ** (sigma_sc_db / 10.0)
     linear_oc = 10.0 ** (sigma_oc_db / 10.0)
     if linear_oc == 0:
@@ -25,10 +17,6 @@ def calculate_circular_polarization_ratio(sigma_sc_db: float, sigma_oc_db: float
 
 
 def normalize_cband_sar_roughness(sigma_hh_db: float, sigma_hv_db: float, incidence_deg: float) -> Dict[str, float]:
-    """
-    Normalizes CSA RADARSAT-1 / RCM C-band HH and HV backscatter (dB) into a
-    dimensionless planetary surface roughness index (0.0 to 1.0) corrected for incidence angle.
-    """
     inc_rad = math.radians(incidence_deg)
     depolarization_ratio_db = sigma_hv_db - sigma_hh_db
     cos_correction = math.cos(inc_rad) ** 1.5
@@ -42,10 +30,6 @@ def normalize_cband_sar_roughness(sigma_hh_db: float, sigma_hv_db: float, incide
 
 
 def estimate_rover_wheel_slip_pct(slope_deg: float, sar_roughness: float, gravity_m_s2: float = 1.62) -> float:
-    """
-    Estimates planetary rover wheel slip percentage from terrain slope, SAR blockiness,
-    and reduced Lunar/Martian gravitational traction.
-    """
     gravity_factor = 9.81 / max(gravity_m_s2, 1.0)
     base_slip = (slope_deg / 25.0) * 38.0 + (sar_roughness * 22.0) + (math.log10(gravity_factor) * 14.0)
     return round(min(98.0, max(2.0, base_slip)), 1)

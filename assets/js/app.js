@@ -1,17 +1,35 @@
 /**
- * Dark Aero v3.0 - Aerospace Mission Control Controller
- * Integrates:
+ * Dark Aero v4.0 - Aerospace Mission Control Controller
+ * Fixed-Viewport Single-Screen Architecture (100vh)
+ * Features:
  * 1. Keyless Esri Orbital Satellite + NASA Worldview GIBS WMTS Map
  * 2. Interactive 3D Planetary Target Globe (Moon & Mars)
- * 3. Live NASA Langley POWER Satellite API Coordinate Scanner
+ * 3. Live NASA Langley POWER Satellite API Coordinate Scanner (with localStorage persistence)
  * 4. Rover Traverse & EVA Route Polyline Planner (Haversine Distance + Wh Energy Estimator)
  * 5. Head-to-Head A/B Earth Analog Comparator (3-Dataset Radar + Parameter Winner Table)
  * 6. 24-Hour Diurnal Thermal Cycle Chart (Day/Night Kelvin Swing)
  * 7. Interactive CSA RADARSAT SAR Polarimetry Lab + Hardware Stress Simulator
+ * 8. 60-Second Judge Guided Tour
  */
 
 (function () {
   const dataset = window.DARK_AERO_DATA;
+  const STORAGE_KEY = "dark_aero_v4_custom_scans";
+
+  // Restore any user-scanned NASA POWER locations from localStorage
+  try {
+    const savedScans = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (Array.isArray(savedScans) && savedScans.length > 0) {
+      savedScans.forEach((scan) => {
+        if (!dataset.earth_analogs.some((e) => e.id === scan.id)) {
+          dataset.earth_analogs.push(scan);
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore storage access errors in restricted contexts
+  }
+
   let currentTargetId = dataset.target_bases[0].id;
   let selectedEarthId = dataset.earth_analogs[0].id;
   let compareSiteBId = dataset.earth_analogs[1].id;
@@ -23,13 +41,11 @@
   let customScanMarker = null;
   let lastScannedCandidate = null;
 
-  // Rover Traverse Planner State
   let traverseModeActive = false;
   let traverseWaypoints = [];
   let traversePolyline = null;
   let traverseMarkersLayer = null;
 
-  // Chart.js Instances
   let radarChart = null;
   let abRadarChart = null;
   let diurnalChart = null;
@@ -123,13 +139,13 @@
       abrasiveWearPct,
       verdictClass: isOptimal ? "optimal" : "moderate",
       verdictText: isOptimal
-        ? "OPTIMAL ANALOG TESTBED — High Mechanical & Regolith Fidelity"
-        : "MODERATE STRESS — Active Thermal / Suspension Compensation Advised"
+        ? "OPTIMAL ANALOG TESTBED — High Mechanical Fidelity"
+        : "MODERATE STRESS — Active Suspension / Thermal Control"
     };
   }
 
   // ============================================================================
-  // 2. INTERACTIVE 3D PLANETARY TARGET GLOBE (HTML5 CANVAS)
+  // 2. INTERACTIVE 3D PLANETARY TARGET GLOBE
   // ============================================================================
   const globeState = {
     rotLon: 0,
@@ -176,11 +192,7 @@
       const y = Math.sin(lat) * Math.cos(tilt) - Math.cos(lat) * Math.cos(lon) * Math.sin(tilt);
       const z = Math.sin(lat) * Math.sin(tilt) + Math.cos(lat) * Math.cos(lon) * Math.cos(tilt);
 
-      return {
-        px: cx + x * radius,
-        py: cy - y * radius,
-        z: z
-      };
+      return { px: cx + x * radius, py: cy - y * radius, z: z };
     }
 
     function renderGlobeFrame() {
@@ -188,31 +200,31 @@
       const h = canvas.height;
       const cx = w / 2;
       const cy = h / 2;
-      const r = w * 0.41;
+      const r = w * 0.42;
 
       ctx.clearRect(0, 0, w, h);
 
       if (!globeState.isDragging) {
-        globeState.rotLon = (globeState.rotLon + 0.35) % 360;
+        globeState.rotLon = (globeState.rotLon + 0.32) % 360;
       }
 
       const isMoon = globeState.body === "Moon";
 
       ctx.beginPath();
-      ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
-      ctx.strokeStyle = isMoon ? "rgba(34, 211, 238, 0.28)" : "rgba(245, 158, 11, 0.32)";
-      ctx.lineWidth = 1.2;
+      ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = isMoon ? "rgba(56, 189, 248, 0.28)" : "rgba(245, 158, 11, 0.3)";
+      ctx.lineWidth = 1;
       ctx.stroke();
 
-      const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+      const grad = ctx.createRadialGradient(cx - r * 0.32, cy - r * 0.32, r * 0.08, cx, cy, r);
       if (isMoon) {
         grad.addColorStop(0, "#94a3b8");
         grad.addColorStop(0.55, "#475569");
-        grad.addColorStop(1, "#0f172a");
+        grad.addColorStop(1, "#090d16");
       } else {
         grad.addColorStop(0, "#fb923c");
-        grad.addColorStop(0.55, "#c2410c");
-        grad.addColorStop(1, "#2a0e05");
+        grad.addColorStop(0.55, "#b45309");
+        grad.addColorStop(1, "#1c0a04");
       }
 
       ctx.beginPath();
@@ -220,8 +232,8 @@
       ctx.fillStyle = grad;
       ctx.fill();
 
-      ctx.lineWidth = 0.75;
-      ctx.strokeStyle = isMoon ? "rgba(148, 163, 184, 0.25)" : "rgba(253, 186, 116, 0.25)";
+      ctx.lineWidth = 0.65;
+      ctx.strokeStyle = isMoon ? "rgba(148, 163, 184, 0.22)" : "rgba(253, 186, 116, 0.22)";
 
       for (let lon = -180; lon < 180; lon += 45) {
         ctx.beginPath();
@@ -264,17 +276,17 @@
       const targetPt = project3D(globeState.targetLat, globeState.targetLon, r, cx, cy);
       if (targetPt.z > -0.15) {
         ctx.beginPath();
-        ctx.arc(targetPt.px, targetPt.py, 5.5, 0, Math.PI * 2);
-        ctx.fillStyle = isMoon ? "#22d3ee" : "#fbbf24";
+        ctx.arc(targetPt.px, targetPt.py, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = isMoon ? "#38bdf8" : "#fbbf24";
         ctx.fill();
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.6;
         ctx.strokeStyle = "#ffffff";
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(targetPt.px, targetPt.py, 10, 0, Math.PI * 2);
-        ctx.strokeStyle = isMoon ? "rgba(34, 211, 238, 0.65)" : "rgba(251, 191, 36, 0.65)";
-        ctx.lineWidth = 1.2;
+        ctx.arc(targetPt.px, targetPt.py, 8.5, 0, Math.PI * 2);
+        ctx.strokeStyle = isMoon ? "rgba(56, 189, 248, 0.65)" : "rgba(251, 191, 36, 0.65)";
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
@@ -292,7 +304,7 @@
     globeState.rotLon = target.coordinates[1];
 
     const badge = document.getElementById("globeBodyBadge");
-    badge.textContent = `${target.body.toUpperCase()} ORBITAL TARGET`;
+    badge.textContent = `${target.body.toUpperCase()} TARGET`;
     badge.className = `globe-body-badge ${target.body.toLowerCase()}`;
 
     document.getElementById("globeCoordText").textContent =
@@ -328,7 +340,7 @@
       distEl.textContent = "0.00 km";
       energyEl.textContent = "0 Wh";
       timeEl.textContent = "0.0 hrs";
-      hazardEl.textContent = traverseWaypoints.length === 1 ? "Click 2nd waypoint..." : "Ready";
+      hazardEl.textContent = traverseWaypoints.length === 1 ? "Click WP-2..." : "Standby";
       return;
     }
 
@@ -345,8 +357,7 @@
     const earth = dataset.earth_analogs.find((e) => e.id === selectedEarthId) || dataset.earth_analogs[0];
     const target = dataset.target_bases.find((t) => t.id === currentTargetId);
 
-    // Energy draw model (Wh/km) scaled by terrain slope, SAR roughness, and target gravity
-    const whPerKm = 145 + earth.slope_deg * 12.5 + earth.sar_roughness * 95 + (target.gravity_m_s2 * 18);
+    const whPerKm = 145 + earth.slope_deg * 12.5 + earth.sar_roughness * 95 + target.gravity_m_s2 * 18;
     const totalWh = Math.round(totalKm * whPerKm);
     const nominalSpeedKmh = Math.max(2.5, 9.5 - earth.sar_roughness * 4.2);
     const estHours = (totalKm / nominalSpeedKmh).toFixed(1);
@@ -355,7 +366,7 @@
     energyEl.textContent = `${totalWh.toLocaleString()} Wh`;
     timeEl.textContent = `${estHours} hrs`;
     hazardEl.textContent =
-      earth.slope_deg > 13.5 ? "HIGH SLOPE GRADE" : earth.slope_deg > 8.5 ? "MODERATE" : "NOMINAL";
+      earth.slope_deg > 13.5 ? "HIGH GRADE" : earth.slope_deg > 8.5 ? "MODERATE" : "NOMINAL";
   }
 
   function clearRoverTraverse() {
@@ -382,7 +393,7 @@
     const esriSatellite = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        attribution: "Esri, Maxar, Earthstar Geographics & NASA Space Apps",
+        attribution: "Esri, Maxar & NASA Space Apps",
         maxNativeZoom: 17,
         maxZoom: 17
       }
@@ -391,7 +402,7 @@
     const nasaTrueColor = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2025-07-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg",
       {
-        attribution: "NASA Earthdata / Worldview GIBS (MODIS Terra)",
+        attribution: "NASA Earthdata / Worldview GIBS",
         maxNativeZoom: 9,
         maxZoom: 17
       }
@@ -400,7 +411,7 @@
     const nasaBlueMarble = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
       {
-        attribution: "NASA Earthdata GIBS Blue Marble",
+        attribution: "NASA GIBS Blue Marble",
         maxNativeZoom: 8,
         maxZoom: 17
       }
@@ -409,7 +420,7 @@
     const openTopo = L.tileLayer(
       "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       {
-        attribution: "OpenTopoMap (CC-BY-SA) & SRTM DEM",
+        attribution: "OpenTopoMap & SRTM DEM",
         maxNativeZoom: 15,
         maxZoom: 17
       }
@@ -418,7 +429,7 @@
     const nasaSurfaceTemp = L.tileLayer(
       "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Land_Surface_Temp_Day/default/2025-07-15/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png",
       {
-        attribution: "NASA Earthdata MODIS LST (Diviner Thermal Comparison)",
+        attribution: "NASA MODIS LST",
         maxNativeZoom: 7,
         maxZoom: 17,
         opacity: 0.65
@@ -428,13 +439,13 @@
     L.control
       .layers(
         {
-          "Orbital High-Res Satellite (Esri World Imagery)": esriSatellite,
-          "NASA Worldview True Color (MODIS Terra)": nasaTrueColor,
-          "NASA Blue Marble Cloud-Free (GIBS)": nasaBlueMarble,
-          "Topographic Elevation Contours (SRTM/OpenTopo)": openTopo
+          "Orbital Satellite (Esri World Imagery)": esriSatellite,
+          "NASA Worldview True Color (MODIS)": nasaTrueColor,
+          "NASA Blue Marble (Cloud-Free)": nasaBlueMarble,
+          "Elevation Contours (SRTM/OpenTopo)": openTopo
         },
         {
-          "NASA Land Surface Temperature Overlay (MODIS)": nasaSurfaceTemp
+          "NASA Land Surface Temperature (MODIS)": nasaSurfaceTemp
         }
       )
       .addTo(map);
@@ -449,8 +460,8 @@
       traverseModeActive = !traverseModeActive;
       toggleTraverseBtn.classList.toggle("active-mode", traverseModeActive);
       toggleTraverseBtn.textContent = traverseModeActive
-        ? "Plot Rover Traverse: ON (Click Map)"
-        : "Plot Rover Traverse: OFF";
+        ? "Traverse Mode: ON"
+        : "Plot Rover Traverse";
     });
 
     clearTraverseBtn.addEventListener("click", () => {
@@ -468,16 +479,15 @@
       const lat = Number(e.latlng.lat.toFixed(4));
       const lon = Number(e.latlng.lng.toFixed(4));
 
-      // Mode A: Rover Traverse Waypoint Plotting
       if (traverseModeActive) {
         traverseWaypoints.push([lat, lon]);
         const wpIdx = traverseWaypoints.length;
 
         const wpMarker = L.circleMarker([lat, lon], {
-          radius: 6,
-          fillColor: "#22d3ee",
+          radius: 5,
+          fillColor: "#38bdf8",
           color: "#ffffff",
-          weight: 2,
+          weight: 1.5,
           fillOpacity: 1
         }).bindTooltip(`WP-${wpIdx}`, { permanent: true, direction: "top" });
         traverseMarkersLayer.addLayer(wpMarker);
@@ -486,16 +496,15 @@
           map.removeLayer(traversePolyline);
         }
         traversePolyline = L.polyline(traverseWaypoints, {
-          color: "#22d3ee",
-          weight: 3,
-          dashArray: "6, 6"
+          color: "#38bdf8",
+          weight: 2.5,
+          dashArray: "5, 5"
         }).addTo(map);
 
         updateTraverseTelemetry();
         return;
       }
 
-      // Mode B: Live NASA Langley POWER Satellite Climatology API Scanner
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
 
       if (customScanMarker) {
@@ -503,18 +512,18 @@
       }
 
       customScanMarker = L.circleMarker([lat, lon], {
-        radius: 10,
+        radius: 9,
         fillColor: "#f59e0b",
         color: "#ffffff",
         weight: 2,
         fillOpacity: 0.95
       }).addTo(map);
 
-      statusText.innerHTML = `Querying <strong>NASA Langley POWER Satellite API</strong> at <code>${lat}°, ${lon}°</code>...`;
+      statusText.innerHTML = `Querying <strong>NASA POWER API</strong> at <code>${lat}°, ${lon}°</code>...`;
       addBtn.style.display = "none";
 
       customScanMarker
-        .bindPopup(`<strong>Scanning NASA POWER Satellite API...</strong><br/>Coords: ${lat}°, ${lon}°`)
+        .bindPopup(`<strong>Scanning NASA POWER API...</strong><br/>Coords: ${lat}°, ${lon}°`)
         .openPopup();
 
       try {
@@ -537,8 +546,8 @@
 
         lastScannedCandidate = {
           id: `custom_nasa_${Date.now()}`,
-          name: `NASA Scanned Site (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
-          country: "Live NASA POWER Satellite Coordinate",
+          name: `NASA Scan (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
+          country: "Live NASA POWER Coordinate",
           coordinates: [lat, lon],
           elevation_m: Math.round(350 + Math.abs(lat) * 12),
           mean_temp_k: meanTempK,
@@ -553,38 +562,38 @@
           ice_potential: derivedIce,
           annual_precip_mm: annualPrecipMm,
           agency_sources: [
-            `NASA Langley POWER Satellite Climatology API (${lat}°, ${lon}°)`,
-            "NASA Earthdata MODIS Land Surface Temperature",
-            "CSA RADARSAT-1 / SRTM Derived Roughness Estimate"
+            `NASA Langley POWER API (${lat}°, ${lon}°)`,
+            "NASA MODIS LST",
+            "CSA SAR Derived Roughness"
           ],
-          best_for: ["Custom Coordinate Field Trial", `Solar Flux: ${solarIrradiance} kWh/m²/d`, "Live Satellite Telemetry"],
-          geological_summary: `Real-time satellite-probed coordinate via NASA POWER API recording ${meanTempK} K (${meanTempC.toFixed(1)}°C) mean surface temperature, ${annualPrecipMm} mm/yr precipitation, and ${solarIrradiance} kWh/m²/day solar irradiance.`,
+          best_for: ["Custom Field Trial", `Solar: ${solarIrradiance} kWh/m²/d`],
+          geological_summary: `Satellite-probed coordinate via NASA POWER API: ${meanTempK} K (${meanTempC.toFixed(1)}°C) mean surface temperature, ${annualPrecipMm} mm/yr precipitation, ${solarIrradiance} kWh/m²/day solar flux.`,
           gibs_layer_focus: "MODIS_Terra_CorrectedReflectance_TrueColor"
         };
 
         const liveScore = computeCustomScore(target, lastScannedCandidate);
 
         statusText.innerHTML = `
-          <span>Coords: <strong>${lat}°, ${lon}°</strong></span> &bull;
-          <span>Temp: <strong>${meanTempK} K (${meanTempC.toFixed(1)}°C)</strong></span> &bull;
+          <span><strong>${lat}°, ${lon}°</strong></span> &bull;
+          <span>Temp: <strong>${meanTempK} K</strong></span> &bull;
           <span>Precip: <strong>${annualPrecipMm} mm/yr</strong></span> &bull;
-          <span>Match vs ${target.body}: <strong style="color:#34d399;">${liveScore.overall}%</strong></span>
+          <span>Match: <strong style="color:#34d399;">${liveScore.overall}%</strong></span>
         `;
         addBtn.style.display = "inline-flex";
 
         customScanMarker.setPopupContent(`
-          <div style="font-family:sans-serif; min-width:225px;">
-            <strong style="color:#0284c7;">LIVE NASA POWER SATELLITE SCAN</strong><br/>
+          <div style="font-family:sans-serif; min-width:205px;">
+            <strong style="color:#0284c7;">LIVE NASA POWER SCAN</strong><br/>
             <small>Coords: ${lat}°, ${lon}°</small>
             <hr style="margin:4px 0; border-color:#cbd5e1;"/>
             <strong>Match vs ${target.name}: <span style="color:#059669;">${liveScore.overall}%</span></strong><br/>
-            <small>• Surface Temp: <strong>${meanTempK} K (${meanTempC.toFixed(1)}°C)</strong></small><br/>
-            <small>• Annual Precip: <strong>${annualPrecipMm} mm/yr</strong></small><br/>
+            <small>• Temp: <strong>${meanTempK} K (${meanTempC.toFixed(1)}°C)</strong></small><br/>
+            <small>• Precip: <strong>${annualPrecipMm} mm/yr</strong></small><br/>
             <small>• Solar Flux: <strong>${solarIrradiance} kWh/m²/day</strong></small>
           </div>
         `);
       } catch (err) {
-        statusText.innerHTML = `Scanned <code>${lat}°, ${lon}°</code> (Offline fallback telemetry applied).`;
+        statusText.innerHTML = `Scanned <code>${lat}°, ${lon}°</code> (Offline fallback).`;
       }
     });
 
@@ -593,6 +602,13 @@
       dataset.earth_analogs.push(lastScannedCandidate);
       selectedEarthId = lastScannedCandidate.id;
       addBtn.style.display = "none";
+
+      try {
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        existing.push(lastScannedCandidate);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      } catch (e) {}
+
       populateCompareDropdowns();
       refreshDashboard(false);
     });
@@ -644,18 +660,18 @@
     selB.value = compareSiteBId;
   }
 
-  function bindInspectorTabs() {
+  function activateInspectorTab(tabId) {
     const tabBtns = document.querySelectorAll(".tab-btn");
     const tabPanes = document.querySelectorAll(".tab-pane");
+    tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
+    tabPanes.forEach((p) => p.classList.toggle("active", p.id === tabId));
+    refreshDashboard(false);
+  }
 
-    tabBtns.forEach((btn) => {
+  function bindInspectorTabs() {
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const targetPaneId = btn.dataset.tab;
-        tabBtns.forEach((b) => b.classList.remove("active"));
-        tabPanes.forEach((p) => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById(targetPaneId).classList.add("active");
-        refreshDashboard(false);
+        activateInspectorTab(btn.dataset.tab);
       });
     });
 
@@ -778,13 +794,12 @@
   function renderTargetSummary(target) {
     const container = document.getElementById("targetSummaryBox");
     container.innerHTML = `
-      <div style="font-weight:700; color:#f8fafc; margin-bottom:0.2rem;">${target.name}</div>
-      <div style="font-size:0.72rem; color:#22d3ee; margin-bottom:0.4rem;">${target.region}</div>
-      <p style="font-size:0.74rem; color:#cbd5e1;">${target.mission_rationale}</p>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:11px; color:#f1f5f9;">${target.name}</div>
+      <div class="rationale-text">${target.mission_rationale}</div>
       <div class="meta-row">
-        <span>Mean Temp: <strong>${target.mean_temp_k} K</strong></span>
-        <span>Slope: <strong>${target.slope_deg}&deg;</strong></span>
-        <span>Radar CPR: <strong>${target.radar_cpr}</strong></span>
+        <span>TEMP: <strong>${target.mean_temp_k}K</strong></span>
+        <span>SLOPE: <strong>${target.slope_deg}&deg;</strong></span>
+        <span>CPR: <strong>${target.radar_cpr}</strong></span>
       </div>
     `;
     syncGlobeToTarget(target);
@@ -842,26 +857,30 @@
       const card = document.createElement("div");
       card.className = `analog-card ${item.earth.id === selectedEarthId ? "active" : ""}`;
       card.innerHTML = `
-        <div class="analog-card-header">
-          <div class="analog-card-title">#${idx + 1} ${item.earth.name}</div>
-          <span class="score-badge">${item.scores.overall}%</span>
+        <div>
+          <div class="analog-card-header">
+            <div class="analog-card-title">#${idx + 1} ${item.earth.name}</div>
+            <span class="score-badge">${item.scores.overall}%</span>
+          </div>
+          <div style="font-size:9.5px; color:#64748b; margin-top:1px;">
+            ${item.earth.country} &bull; ${item.earth.elevation_m}m
+          </div>
         </div>
-        <div style="font-size:0.71rem; color:#94a3b8; margin-top:0.2rem;">
-          ${item.earth.country} &bull; Elev: ${item.earth.elevation_m}m
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${item.scores.overall}%;"></div>
-        </div>
-        <div style="font-size:0.68rem; color:#38bdf8; margin-top:0.35rem; display:flex; justify-content:space-between;">
-          <span>Geo: ${item.scores.geology}%</span>
-          <span>SAR: ${item.scores.roughness}%</span>
-          <span>Slope: ${item.scores.slope}%</span>
-          <span>Ice: ${item.scores.ice}%</span>
+        <div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${item.scores.overall}%;"></div>
+          </div>
+          <div class="card-submetrics">
+            <span>GEO:${item.scores.geology}%</span>
+            <span>SAR:${item.scores.roughness}%</span>
+            <span>SLP:${item.scores.slope}%</span>
+            <span>ICE:${item.scores.ice}%</span>
+          </div>
         </div>
       `;
       card.addEventListener("click", () => {
         selectedEarthId = item.earth.id;
-        map.flyTo(item.earth.coordinates, 6, { duration: 1.1 });
+        map.flyTo(item.earth.coordinates, 6, { duration: 1.0 });
         refreshDashboard(false);
       });
       listEl.appendChild(card);
@@ -874,20 +893,19 @@
     ranked.forEach((item, idx) => {
       const isSelected = item.earth.id === selectedEarthId;
       const circle = L.circleMarker(item.earth.coordinates, {
-        radius: isSelected ? 11 : 8,
-        fillColor: isSelected ? "#22d3ee" : idx === 0 ? "#10b981" : "#38bdf8",
-        color: "#04070f",
+        radius: isSelected ? 10 : 7,
+        fillColor: isSelected ? "#38bdf8" : idx === 0 ? "#10b981" : "#64748b",
+        color: "#06080d",
         weight: 2,
         opacity: 1,
         fillOpacity: 0.92
       });
 
       circle.bindPopup(`
-        <div style="font-family:sans-serif; min-width:205px;">
-          <strong style="font-size:0.86rem;">#${idx + 1} ${item.earth.name}</strong><br/>
+        <div style="font-family:sans-serif; min-width:195px;">
+          <strong style="font-size:12px;">#${idx + 1} ${item.earth.name}</strong><br/>
           <span style="color:#0284c7; font-weight:700;">Analog Match: ${item.scores.overall}%</span><br/>
-          <small>Country: ${item.earth.country}</small><br/>
-          <small>Coords: ${item.earth.coordinates[0].toFixed(2)}°, ${item.earth.coordinates[1].toFixed(2)}°</small><br/>
+          <small>${item.earth.country} (${item.earth.coordinates[0].toFixed(2)}°, ${item.earth.coordinates[1].toFixed(2)}°)</small><br/>
           <small>SAR Roughness: ${item.earth.sar_roughness} | Slope: ${item.earth.slope_deg}&deg;</small>
         </div>
       `);
@@ -915,44 +933,30 @@
   function renderInspector(target, earth, scores) {
     document.getElementById("inspectorTitle").textContent = earth.name;
     document.getElementById("inspectorSubtitle").textContent =
-      `${earth.country} (${earth.coordinates[0].toFixed(3)}°, ${earth.coordinates[1].toFixed(3)}°)`;
-    document.getElementById("inspectorOverallScore").textContent = `${scores.overall}% Match`;
+      `${earth.country} • ${earth.coordinates[0].toFixed(2)}°, ${earth.coordinates[1].toFixed(2)}°`;
+    document.getElementById("inspectorOverallScore").textContent = `${scores.overall}%`;
     document.getElementById("inspectorSummary").textContent = earth.geological_summary;
 
-    document.getElementById("metricTemp").textContent = `${earth.mean_temp_k} K vs ${target.mean_temp_k} K`;
+    document.getElementById("metricTemp").textContent = `${earth.mean_temp_k}K vs ${target.mean_temp_k}K`;
     document.getElementById("metricSlope").textContent = `${earth.slope_deg}° vs ${target.slope_deg}°`;
-    document.getElementById("metricSar").textContent = `${earth.sar_roughness} vs ${target.radar_cpr} CPR`;
+    document.getElementById("metricSar").textContent = `${earth.sar_roughness} vs ${target.radar_cpr}`;
     document.getElementById("metricPrecip").textContent = `${earth.annual_precip_mm} mm/yr`;
 
     const hwStats = computeHardwareTelemetry(target, earth, selectedHardwareId);
     document.getElementById("simSlipVal").textContent = `${hwStats.slipRiskPct}%`;
-    document.getElementById("simDeltaTempVal").textContent = `Δ ${hwStats.deltaTempK} K`;
-    document.getElementById("simPowerVal").textContent = `${hwStats.powerLoadW} W`;
+    document.getElementById("simDeltaTempVal").textContent = `Δ${hwStats.deltaTempK}K`;
+    document.getElementById("simPowerVal").textContent = `${hwStats.powerLoadW}W`;
     document.getElementById("simWearVal").textContent = `${hwStats.abrasiveWearPct}%`;
 
     const verdictEl = document.getElementById("simVerdictBanner");
     verdictEl.className = `verdict-banner ${hwStats.verdictClass}`;
     verdictEl.textContent = hwStats.verdictText;
 
-    const tagsEl = document.getElementById("inspectorTags");
-    tagsEl.innerHTML = earth.best_for
-      .map((tag) => `<span class="tag-item">${tag}</span>`)
-      .join("");
-
-    const sourcesEl = document.getElementById("inspectorSources");
-    sourcesEl.innerHTML = [...earth.agency_sources, ...target.primary_datasets.slice(0, 2)]
-      .map((s) => `<li>${s}</li>`)
-      .join("");
+    document.getElementById("inspectorCitationStrip").textContent =
+      `SOURCES: ${earth.agency_sources.join(" • ")}`;
 
     const ctx = document.getElementById("telemetryRadarChart").getContext("2d");
-    const labels = [
-      "Basalt / Geology",
-      "SAR Roughness",
-      "Slope Profile",
-      "Thermal Regime",
-      "Hyper-Aridity",
-      "Subsurface Ice"
-    ];
+    const labels = ["Geology", "SAR Roughness", "Slope", "Thermal", "Aridity", "Ice ISRU"];
 
     if (radarChart) {
       radarChart.destroy();
@@ -966,18 +970,18 @@
           {
             label: target.name,
             data: buildNormalizedAxisArray(target, true),
-            backgroundColor: "rgba(245, 158, 11, 0.2)",
+            backgroundColor: "rgba(245, 158, 11, 0.16)",
             borderColor: "#f59e0b",
             pointBackgroundColor: "#f59e0b",
-            borderWidth: 2
+            borderWidth: 1.8
           },
           {
             label: earth.name,
             data: buildNormalizedAxisArray(earth, false),
-            backgroundColor: "rgba(34, 211, 238, 0.22)",
-            borderColor: "#22d3ee",
-            pointBackgroundColor: "#22d3ee",
-            borderWidth: 2
+            backgroundColor: "rgba(56, 189, 248, 0.18)",
+            borderColor: "#38bdf8",
+            pointBackgroundColor: "#38bdf8",
+            borderWidth: 1.8
           }
         ]
       },
@@ -986,15 +990,15 @@
         maintainAspectRatio: false,
         scales: {
           r: {
-            angleLines: { color: "#1e293b" },
-            grid: { color: "#1e293b" },
-            pointLabels: { color: "#cbd5e1", font: { size: 10 } },
+            angleLines: { color: "rgba(255,255,255,0.07)" },
+            grid: { color: "rgba(255,255,255,0.07)" },
+            pointLabels: { color: "#94a3b8", font: { size: 9.5, family: "JetBrains Mono" } },
             ticks: { display: false, min: 0, max: 100 }
           }
         },
         plugins: {
           legend: {
-            labels: { color: "#f8fafc", boxWidth: 12, font: { size: 10 } }
+            labels: { color: "#cbd5e1", boxWidth: 10, font: { size: 9.5 } }
           }
         }
       }
@@ -1002,14 +1006,14 @@
   }
 
   // ============================================================================
-  // 5. HEAD-TO-HEAD A/B EARTH ANALOG COMPARATOR (3-DATASET OVERLAY)
+  // 5. HEAD-TO-HEAD A/B EARTH ANALOG COMPARATOR
   // ============================================================================
   function renderHeadToHeadComparator(target, entryA, entryB) {
     const canvas = document.getElementById("abRadarChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    const labels = ["Geology", "SAR Roughness", "Slope", "Thermal", "Aridity", "Ice ISRU"];
+    const labels = ["Geology", "SAR", "Slope", "Thermal", "Aridity", "Ice"];
     if (abRadarChart) {
       abRadarChart.destroy();
     }
@@ -1020,25 +1024,25 @@
         labels: labels,
         datasets: [
           {
-            label: `Target: ${target.name}`,
+            label: `Target (${target.body})`,
             data: buildNormalizedAxisArray(target, true),
-            backgroundColor: "rgba(245, 158, 11, 0.14)",
+            backgroundColor: "rgba(245, 158, 11, 0.12)",
             borderColor: "#f59e0b",
-            borderWidth: 2
+            borderWidth: 1.6
           },
           {
-            label: `Site A: ${entryA.earth.name}`,
+            label: `A: ${entryA.earth.name}`,
             data: buildNormalizedAxisArray(entryA.earth, false),
-            backgroundColor: "rgba(34, 211, 238, 0.2)",
-            borderColor: "#22d3ee",
-            borderWidth: 2
+            backgroundColor: "rgba(56, 189, 248, 0.18)",
+            borderColor: "#38bdf8",
+            borderWidth: 1.6
           },
           {
-            label: `Site B: ${entryB.earth.name}`,
+            label: `B: ${entryB.earth.name}`,
             data: buildNormalizedAxisArray(entryB.earth, false),
-            backgroundColor: "rgba(16, 185, 129, 0.18)",
+            backgroundColor: "rgba(16, 185, 129, 0.16)",
             borderColor: "#10b981",
-            borderWidth: 2
+            borderWidth: 1.6
           }
         ]
       },
@@ -1047,28 +1051,27 @@
         maintainAspectRatio: false,
         scales: {
           r: {
-            angleLines: { color: "#1e293b" },
-            grid: { color: "#1e293b" },
-            pointLabels: { color: "#cbd5e1", font: { size: 10 } },
+            angleLines: { color: "rgba(255,255,255,0.07)" },
+            grid: { color: "rgba(255,255,255,0.07)" },
+            pointLabels: { color: "#94a3b8", font: { size: 9 } },
             ticks: { display: false, min: 0, max: 100 }
           }
         },
         plugins: {
           legend: {
-            labels: { color: "#f8fafc", boxWidth: 10, font: { size: 9.5 } }
+            labels: { color: "#cbd5e1", boxWidth: 9, font: { size: 9 } }
           }
         }
       }
     });
 
     const metricsList = [
-      { label: "Overall Weighted Match", key: "overall" },
-      { label: "Basalt / Silicate Geology", key: "geology" },
-      { label: "SAR Radar Roughness", key: "roughness" },
-      { label: "Topographic Slope", key: "slope" },
-      { label: "Thermal Regime", key: "thermal" },
-      { label: "Hyper-Aridity", key: "aridity" },
-      { label: "Subsurface Ice ISRU", key: "ice" }
+      { label: "Overall Score", key: "overall" },
+      { label: "Basalt Geology", key: "geology" },
+      { label: "SAR Roughness", key: "roughness" },
+      { label: "Slope Profile", key: "slope" },
+      { label: "Thermal Match", key: "thermal" },
+      { label: "Aridity & Ice", key: "ice" }
     ];
 
     const tbody = document.getElementById("abComparisonTableBody");
@@ -1081,8 +1084,8 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${m.label}</td>
-        <td style="color:#22d3ee; font-weight:700;">${valA}%</td>
-        <td style="color:#34d399; font-weight:700;">${valB}%</td>
+        <td style="font-family:var(--font-mono); color:#38bdf8; font-weight:600;">${valA}%</td>
+        <td style="font-family:var(--font-mono); color:#34d399; font-weight:600;">${valB}%</td>
         <td><span class="winner-pill">${winner}</span></td>
       `;
       tbody.appendChild(tr);
@@ -1092,16 +1095,15 @@
       entryA.scores.overall >= entryB.scores.overall ? entryA.earth.name : entryB.earth.name;
     const diffPct = Math.abs(entryA.scores.overall - entryB.scores.overall).toFixed(1);
     document.getElementById("abWinnerSummary").textContent =
-      `RECOMMENDED PRIMARY TESTBED: ${overallWinner} (+${diffPct}% advantage)`;
+      `PRIMARY TESTBED: ${overallWinner} (+${diffPct}%)`;
   }
 
   // ============================================================================
-  // 6. 24-HOUR DIURNAL THERMAL CYCLE CHART (DAY / NIGHT KELVIN SWING)
+  // 6. 24-HOUR DIURNAL THERMAL CYCLE CHART
   // ============================================================================
   function generateDiurnalCurve(minK, maxK) {
     const hours = [0, 3, 6, 9, 12, 15, 18, 21];
     return hours.map((h) => {
-      // Peak heating at 15:00 local solar time, trough at 03:00
       const phase = ((h - 3) / 24.0) * 2 * Math.PI;
       const norm = (1 - Math.cos(phase)) / 2.0;
       return Number((minK + (maxK - minK) * norm).toFixed(1));
@@ -1121,10 +1123,10 @@
     const targetSwing = (tMax - tMin).toFixed(1);
     const earthSwing = (eMax - eMin).toFixed(1);
 
-    document.getElementById("targetDiurnalSwingVal").textContent = `Δ ${targetSwing} K (${tMin}K–${tMax}K)`;
-    document.getElementById("earthDiurnalSwingVal").textContent = `Δ ${earthSwing} K (${eMin}K–${eMax}K)`;
+    document.getElementById("targetDiurnalSwingVal").textContent = `Δ${targetSwing}K (${tMin}–${tMax}K)`;
+    document.getElementById("earthDiurnalSwingVal").textContent = `Δ${earthSwing}K (${eMin}–${eMax}K)`;
     document.getElementById("thermalShockVerdict").textContent =
-      `THERMAL GRADIENT: ${target.body} experiences a ${targetSwing} K diurnal swing vs ${earthSwing} K at ${earth.name}.`;
+      `DIURNAL SHOCK: ${target.body} Δ${targetSwing}K swing vs ${earth.name} Δ${earthSwing}K`;
 
     if (diurnalChart) {
       diurnalChart.destroy();
@@ -1133,25 +1135,25 @@
     diurnalChart = new Chart(ctx, {
       type: "line",
       data: {
-        labels: ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"],
+        labels: ["00h", "03h", "06h", "09h", "12h", "15h", "18h", "21h"],
         datasets: [
           {
             label: `${target.name} (K)`,
             data: generateDiurnalCurve(tMin, tMax),
             borderColor: "#f59e0b",
-            backgroundColor: "rgba(245, 158, 11, 0.16)",
+            backgroundColor: "rgba(245, 158, 11, 0.14)",
             fill: true,
             tension: 0.38,
-            borderWidth: 2
+            borderWidth: 1.8
           },
           {
             label: `${earth.name} (K)`,
             data: generateDiurnalCurve(eMin, eMax),
-            borderColor: "#22d3ee",
-            backgroundColor: "rgba(34, 211, 238, 0.16)",
+            borderColor: "#38bdf8",
+            backgroundColor: "rgba(56, 189, 248, 0.14)",
             fill: true,
             tension: 0.38,
-            borderWidth: 2
+            borderWidth: 1.8
           }
         ]
       },
@@ -1160,18 +1162,17 @@
         maintainAspectRatio: false,
         scales: {
           x: {
-            ticks: { color: "#94a3b8", font: { size: 10 } },
-            grid: { color: "rgba(30, 41, 59, 0.6)" }
+            ticks: { color: "#64748b", font: { size: 9.5, family: "JetBrains Mono" } },
+            grid: { color: "rgba(255, 255, 255, 0.05)" }
           },
           y: {
-            ticks: { color: "#cbd5e1", font: { size: 10 } },
-            grid: { color: "rgba(30, 41, 59, 0.6)" },
-            title: { display: true, text: "Surface Temperature (Kelvin)", color: "#94a3b8", font: { size: 10 } }
+            ticks: { color: "#94a3b8", font: { size: 9.5, family: "JetBrains Mono" } },
+            grid: { color: "rgba(255, 255, 255, 0.05)" }
           }
         },
         plugins: {
           legend: {
-            labels: { color: "#f8fafc", boxWidth: 11, font: { size: 10 } }
+            labels: { color: "#cbd5e1", boxWidth: 10, font: { size: 9.5 } }
           }
         }
       }
@@ -1179,7 +1180,88 @@
   }
 
   // ============================================================================
-  // 7. FULL 60-PAIR MATRIX MODAL & DATA EXPORTS (JSON & CSV)
+  // 7. 60-SECOND JUDGE GUIDED TOUR
+  // ============================================================================
+  function setupJudgeGuidedTour() {
+    const tourPopover = document.getElementById("judgeTourPopover");
+    const stepBadge = document.getElementById("tourStepBadge");
+    const stepTitle = document.getElementById("tourStepTitle");
+    const stepDesc = document.getElementById("tourStepDesc");
+    const nextBtn = document.getElementById("tourNextBtn");
+    const closeBtn = document.getElementById("tourCloseBtn");
+
+    const steps = [
+      {
+        panelId: "panel-left",
+        tabId: "tab-overview",
+        title: "Step 1: 3D Planetary Target & Mission Weighting",
+        desc: "Select Moon (Artemis South Pole) or Mars targets on the interactive 3D globe and tune weights across 6 multi-agency criteria (NASA LRO, CSA SAR, ESA, JAXA)."
+      },
+      {
+        panelId: "panel-center",
+        tabId: "tab-overview",
+        title: "Step 2: Orbital Satellite Map & Live NASA POWER API",
+        desc: "Click any Earth analog marker, toggle NASA Worldview MODIS overlays, plot a Rover Traverse route, or click anywhere on Earth to pull live NASA POWER satellite telemetry."
+      },
+      {
+        panelId: "panel-right",
+        tabId: "tab-overview",
+        title: "Step 3: Hardware & Rover Stress Simulator",
+        desc: "Evaluate mechanical wheel-slip risk, cryogenic thermal delta (ΔK), ISRU power draw (W), and abrasive regolith wear for rovers, spacesuits, and ice drills."
+      },
+      {
+        panelId: "panel-right",
+        tabId: "tab-compare",
+        title: "Step 4: Head-to-Head A/B Analog Comparator",
+        desc: "Overlay any two Earth analog candidates directly against the target extraterrestrial base on a 3-dataset radar plot with a parameter-by-parameter winner table."
+      },
+      {
+        panelId: "panel-right",
+        tabId: "tab-sar",
+        title: "Step 5: Live CSA RADARSAT SAR Polarimetry Lab",
+        desc: "Calibrate C-band HH/HV radar backscatter and incidence angles in real time to compute normalized surface roughness and Lunar Mini-RF CPR equivalents."
+      }
+    ];
+
+    let currentStep = 0;
+
+    function renderTourStep(idx) {
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
+      const step = steps[idx];
+      const targetPanel = document.getElementById(step.panelId);
+      if (targetPanel) targetPanel.classList.add("tour-highlight");
+      activateInspectorTab(step.tabId);
+
+      stepBadge.textContent = `JUDGE TOUR ${idx + 1} / ${steps.length}`;
+      stepTitle.textContent = step.title;
+      stepDesc.textContent = step.desc;
+      nextBtn.textContent = idx === steps.length - 1 ? "Finish Tour" : "Next Step →";
+      tourPopover.classList.add("open");
+    }
+
+    document.getElementById("startJudgeTourBtn").addEventListener("click", () => {
+      currentStep = 0;
+      renderTourStep(currentStep);
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        renderTourStep(currentStep);
+      } else {
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
+        tourPopover.classList.remove("open");
+      }
+    });
+
+    closeBtn.addEventListener("click", () => {
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("tour-highlight"));
+      tourPopover.classList.remove("open");
+    });
+  }
+
+  // ============================================================================
+  // 8. FULL 60-PAIR MATRIX MODAL & DATA EXPORTS (JSON & CSV)
   // ============================================================================
   function setupModalAndExports() {
     const modal = document.getElementById("matrixModal");
@@ -1221,7 +1303,7 @@
     document.getElementById("exportJsonBtn").addEventListener("click", () => {
       const target = dataset.target_bases.find((t) => t.id === currentTargetId);
       const report = {
-        generated_by: "Dark Aero Planetary Analog Decision Support System v3.0",
+        generated_by: "Dark Aero Planetary Analog Decision Support System v4.0",
         target_base: target,
         custom_weights: weights,
         selected_hardware_simulation: selectedHardwareId,
@@ -1242,7 +1324,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dark_aero_${currentTargetId}_mission_report_v3.json`;
+      a.download = `dark_aero_${currentTargetId}_mission_report_v4.json`;
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -1292,7 +1374,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "dark_aero_analog_comparison_matrix_v3.csv";
+      a.download = "dark_aero_analog_comparison_matrix_v4.csv";
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -1306,6 +1388,7 @@
     bindInspectorTabs();
     bindSarPolarimetryLab();
     bindSlidersAndPresets();
+    setupJudgeGuidedTour();
     setupModalAndExports();
     refreshDashboard(true);
   });

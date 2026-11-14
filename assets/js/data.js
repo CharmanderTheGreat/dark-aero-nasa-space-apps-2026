@@ -1,6 +1,6 @@
-// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset (v3.0)
+// Pre-compiled NASA, CSA, ESA, and JAXA Planetary Analog Dataset (v4.0)
 window.DARK_AERO_DATA = {
-  "project": "Dark Aero - Planetary Analog Decision Support System (v3.0 Mission Control)",
+  "project": "Dark Aero - Planetary Analog Decision Support System (v4.0 Mission Control)",
   "challenge": "Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars",
   "event": "2026 NASA International Space Apps Challenge",
   "default_weights": {
@@ -34,10 +34,10 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 1.62,
       "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
-        "NASA LRO Diviner Lunar Radiometer (Polar Thermal Maps)",
-        "NASA LRO Mini-RF (S/X-Band Radar Backscatter & CPR)",
-        "NASA LRO LOLA (Lunar Orbiter Laser Altimeter)",
-        "NASA LRO LEND (Lunar Exploration Neutron Detector)"
+        "NASA LRO Diviner Lunar Radiometer",
+        "NASA LRO Mini-RF Polarimetric Radar",
+        "NASA LRO LOLA Laser Altimeter",
+        "NASA LRO LEND Neutron Detector"
       ],
       "mission_rationale": "Primary Artemis permanent base candidate featuring illuminated crater rims for solar power adjacent to permanently shadowed regions (PSRs) rich in water ice."
     },
@@ -63,9 +63,9 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 1.62,
       "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
-        "NASA LRO LROC NAC/WAC Stereo Topography",
-        "NASA LRO Diviner Polar Resource Products",
-        "NASA LRO LOLA Roughness & Slope Gradients"
+        "NASA LRO LROC Stereo Topography",
+        "NASA LRO Diviner Polar Products",
+        "NASA LRO LOLA Slope Gradients"
       ],
       "mission_rationale": "High-elevation mountain ridge providing direct line-of-sight communications with Earth and prolonged solar illumination for habitats."
     },
@@ -91,9 +91,9 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 1.62,
       "solar_irradiance_w_m2": 1361.0,
       "primary_datasets": [
-        "NASA LRO Mini-RF Pyroclastic Deposit Maps",
-        "NASA LRO Diviner Silicate Mineralogy Index",
-        "NASA PDS Clementine & Moon Mineralogy Mapper (M3)"
+        "NASA LRO Mini-RF Pyroclastic Maps",
+        "NASA LRO Diviner Silicate Index",
+        "NASA PDS Moon Mineralogy Mapper"
       ],
       "mission_rationale": "Vast volcanic plateau containing intact lava tubes for radiation-shielded habitats and oxygen-rich ilmenite pyroclastic glass for ISRU."
     },
@@ -119,9 +119,9 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 3.72,
       "solar_irradiance_w_m2": 590.0,
       "primary_datasets": [
-        "NASA PDS Mars 2020 Perseverance MEDA Weather Data",
-        "NASA MRO CRISM Hyperspectral Mineralogy",
-        "NASA MGS MOLA Altimetry & HiRISE DTM"
+        "NASA PDS Mars 2020 MEDA Weather",
+        "NASA MRO CRISM Mineralogy",
+        "NASA MGS MOLA & HiRISE DTM"
       ],
       "mission_rationale": "Ancient lacustrine basin rich in phyllosilicates, carbonates, and basaltic sands; benchmark site for Mars Sample Return and surface logistics."
     },
@@ -147,9 +147,9 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 3.72,
       "solar_irradiance_w_m2": 540.0,
       "primary_datasets": [
-        "NASA MRO SHARAD Subsurface Radar Sounder",
-        "NASA Mars Odyssey THEMIS Thermal Inertia",
-        "NASA PDS MOLA Flatness & Landing Safety Maps"
+        "NASA MRO SHARAD Subsurface Radar",
+        "NASA Mars Odyssey THEMIS Thermal",
+        "NASA PDS MOLA Landing Safety Maps"
       ],
       "mission_rationale": "Flat volcanic plain underlain by massive shallow subsurface water-ice sheets ideal for large-scale human landing pads and propellant production."
     },
@@ -175,9 +175,9 @@ window.DARK_AERO_DATA = {
       "gravity_m_s2": 3.72,
       "solar_irradiance_w_m2": 605.0,
       "primary_datasets": [
-        "NASA MRO HiRISE & CTX Canyon Wall Imagery",
-        "NASA PDS Mars Express OMEGA Sulfate Maps",
-        "NASA MGS MOLA Canyon Relief Data"
+        "NASA MRO HiRISE Canyon Imagery",
+        "NASA PDS Mars Express OMEGA",
+        "NASA MGS MOLA Canyon Relief"
       ],
       "mission_rationale": "Deep tectonic trough offering higher atmospheric pressure, warmer equatorial temperatures, and exposed layered volcanic stratigraphy."
     }
@@ -204,16 +204,16 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.92,
       "annual_precip_mm": 135.0,
       "agency_sources": [
-        "CSA RADARSAT-1 & RCM (C-Band SAR Impact Breccia Roughness)",
-        "NASA Earthdata MODIS Land Surface Temperature",
-        "NASA ASTER GDEM v3 Arctic Topography",
-        "JAXA G-Portal Polar Precipitation & Snow Cover"
+        "CSA RADARSAT-1 & RCM SAR",
+        "NASA Earthdata MODIS LST",
+        "NASA ASTER GDEM v3",
+        "JAXA G-Portal Cryosphere"
       ],
       "best_for": [
         "Lunar South Pole ISRU",
         "EVA Suit Mobility",
         "Cryogenic Drilling",
-        "Pressurized Rover Trials"
+        "Rover Trials"
       ],
       "geological_summary": "High-Arctic polar desert impact structure featuring continuous permafrost, impact-brecciated gneiss, and zero vegetation.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -295,15 +295,15 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.96,
       "annual_precip_mm": 15.0,
       "agency_sources": [
-        "NASA LRO Diviner Comparative Cryosphere Dataset",
-        "CSA RADARSAT-1 Antarctic Mapping Mission SAR",
-        "NASA Earthdata ICESat-2 & MODIS Thermal",
-        "ESA Copernicus Sentinel-1 Ice Velocity & Roughness"
+        "NASA LRO Diviner Cryosphere",
+        "CSA RADARSAT-1 Antarctic SAR",
+        "NASA ICESat-2 & MODIS Thermal",
+        "ESA Copernicus Sentinel-1"
       ],
       "best_for": [
-        "Shackleton Crater Ice Mining",
-        "Arcadia Planitia Subsurface Ice",
-        "Astrobiology Life Detection"
+        "Shackleton Ice Mining",
+        "Arcadia Subsurface Ice",
+        "Astrobiology"
       ],
       "geological_summary": "Hyper-arid polar valley with shallow ice-cemented permafrost topped by dry regolith, closely mirroring lunar polar craters and Martian northern plains.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",
@@ -385,15 +385,15 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.32,
       "annual_precip_mm": 2.1,
       "agency_sources": [
-        "NASA Earthdata Terra/ASTER Mineralogical Indices",
-        "NASA SMAP Soil Moisture Active Passive",
-        "ESA Copernicus Sentinel-2 Hyperspectral Surface Reflectance",
-        "JAXA G-Portal Global Aridity & Precipitation"
+        "NASA Terra/ASTER Mineralogy",
+        "NASA SMAP Soil Moisture",
+        "ESA Copernicus Sentinel-2",
+        "JAXA G-Portal Precipitation"
       ],
       "best_for": [
-        "Jezero Crater Rover Navigation",
-        "UV Radiation Resilience",
-        "Perchlorate Soil Analysis"
+        "Jezero Rover Navigation",
+        "UV Radiation Tests",
+        "Perchlorate Soil"
       ],
       "geological_summary": "Earth's driest non-polar desert containing perchlorate-rich soils, sulfate crusts, and alluvial fan deltas analogous to Jezero Crater.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -475,14 +475,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.25,
       "annual_precip_mm": 380.0,
       "agency_sources": [
-        "NASA Earthdata SRTM 1-Arc-Second Digital Elevation",
-        "CSA RADARSAT-1 Pahoehoe & Aa Lava Backscatter",
-        "NASA PDS USGS Spectral Library Basalt Reference"
+        "NASA Earthdata SRTM DEM",
+        "CSA RADARSAT-1 Lava SAR",
+        "NASA PDS Spectral Library"
       ],
       "best_for": [
-        "Aristarchus Lava Tube Habitats",
-        "Regolith Sintering ISRU",
-        "Long-Duration Crew Isolation"
+        "Lava Tube Habitats",
+        "Regolith Sintering",
+        "Crew Isolation"
       ],
       "geological_summary": "Unweathered tholeiitic basalt lava flows and intact volcanic skylight lava tubes matching lunar mare and Martian shield volcanoes.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -564,14 +564,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.84,
       "annual_precip_mm": 420.0,
       "agency_sources": [
-        "CSA RADARSAT Constellation Mission (RCM) Polarimetric SAR",
-        "ESA Copernicus Sentinel-1 InSAR Deformation & Roughness",
-        "NASA Earthdata ASTER Thermal Infrared"
+        "CSA RCM Polarimetric SAR",
+        "ESA Copernicus Sentinel-1",
+        "NASA Earthdata ASTER TIR"
       ],
       "best_for": [
-        "Glacio-Volcanic Interaction",
-        "Lunar Mare Rover Traction",
-        "Basalt ISRU Oxygen Extraction"
+        "Glacio-Volcanic Trials",
+        "Lunar Mare Traction",
+        "Basalt O2 ISRU"
       ],
       "geological_summary": "Subarctic basaltic sand sheet and fresh lava plain interacting with glacial permafrost and windblown volcanic tephra.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -653,14 +653,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.94,
       "annual_precip_mm": 95.0,
       "agency_sources": [
-        "CSA RADARSAT-1 Arctic Evaporite & Permafrost Archive",
-        "NASA Earthdata MODIS Polar Night Surface Temperature",
-        "JAXA G-Portal Cryosphere Snow Water Equivalent"
+        "CSA RADARSAT-1 Permafrost",
+        "NASA MODIS Polar Thermal",
+        "JAXA G-Portal Snow Cover"
       ],
       "best_for": [
-        "Malapert Massif Communications",
-        "Perennial Cold Spring Astrobiology",
-        "Polar Night Power Grids"
+        "Malapert Comms",
+        "Cold Spring Astrobiology",
+        "Polar Power Grids"
       ],
       "geological_summary": "High-latitude mountainous terrain with gypsum-anhydrite diapirs, sub-zero saline springs, and rugged polar slopes.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",
@@ -742,14 +742,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.18,
       "annual_precip_mm": 510.0,
       "agency_sources": [
-        "ESA Open Science Catalog Hyperspectral Mineralogy",
-        "NASA PDS MRO CRISM Jarosite/Hematite Reference",
-        "NASA Earthdata Landsat-9 OLI Surface Reflectance"
+        "ESA Open Science Catalog",
+        "NASA PDS MRO CRISM",
+        "NASA Landsat-9 OLI"
       ],
       "best_for": [
         "Mars Sulfate Mineralogy",
-        "Subsurface Drilling Automation",
-        "Biomarker Preservation"
+        "Subsurface Drilling",
+        "Biomarkers"
       ],
       "geological_summary": "Iron- and sulfate-rich geochemical environment producing jarosite and hematite precipitates identical to Martian sedimentary basins.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -831,14 +831,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.22,
       "annual_precip_mm": 210.0,
       "agency_sources": [
-        "NASA Johnson Space Center Planetary Analog Archive",
-        "NASA Earthdata SRTM Crater Rim Slope Profile",
-        "CSA RADARSAT-1 Arid Maar Backscatter"
+        "NASA JSC Planetary Analog",
+        "NASA Earthdata SRTM DEM",
+        "CSA RADARSAT-1 Maar SAR"
       ],
       "best_for": [
-        "Apollo/Artemis Field Geology",
-        "Crater Rim Mass Wasting",
-        "Seismic Array Deployment"
+        "Artemis Field Geology",
+        "Crater Rim Slopes",
+        "Seismic Arrays"
       ],
       "geological_summary": "Basaltic phreatomagmatic maar crater with steep pyroclastic rims and mantle xenoliths used directly for NASA Artemis astronaut training.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -920,14 +920,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.68,
       "annual_precip_mm": 22.0,
       "agency_sources": [
-        "JAXA G-Portal High-Altitude Aridity & Wind Dataset",
-        "ESA Copernicus Sentinel-1 Aeolian Roughness",
-        "NASA Earthdata MODIS High-Elevation UV & Thermal"
+        "JAXA G-Portal Aridity",
+        "ESA Copernicus Sentinel-1",
+        "NASA MODIS High-Altitude"
       ],
       "best_for": [
-        "Arcadia Planitia Landing Zones",
-        "Aeolian Dust Mitigation",
-        "Evaporite Salt Flat Rovers"
+        "Arcadia Landing Zones",
+        "Dust Mitigation",
+        "Playa Rovers"
       ],
       "geological_summary": "High-elevation hyper-arid basin on the Tibetan Plateau featuring wind-sculpted yardangs, polygons, and cold desert evaporites.",
       "gibs_layer_focus": "MODIS_Terra_CorrectedReflectance_TrueColor",
@@ -1009,14 +1009,14 @@ window.DARK_AERO_DATA = {
       "ice_potential": 0.1,
       "annual_precip_mm": 105.0,
       "agency_sources": [
-        "ESA Copernicus Sentinel-2 Tectonic Rift Mapping",
-        "NASA Earthdata ASTER Thermal Anomaly & Sulfate Index",
-        "CSA RADARSAT-1 Rift Fault Surface Roughness"
+        "ESA Copernicus Sentinel-2",
+        "NASA ASTER Thermal Index",
+        "CSA RADARSAT-1 Rift SAR"
       ],
       "best_for": [
-        "Valles Marineris Rift Geology",
-        "Hydrothermal Mineralogy",
-        "Extreme Environment Robotics"
+        "Valles Marineris Rift",
+        "Hydrothermal Minerals",
+        "Extreme Robotics"
       ],
       "geological_summary": "Active continental rift basin with basaltic shield volcanism, steep tectonic grabens, and polyextreme hydrothermal evaporites.",
       "gibs_layer_focus": "MODIS_Terra_Land_Surface_Temp_Day",

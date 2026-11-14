@@ -1,4 +1,4 @@
-# Dark Aero v3.0 — Planetary Analog Decision Support System
+# Dark Aero v4.0 — Planetary Analog Decision Support System
 
 **2026 NASA International Space Apps Challenge**  
 **Challenge:** Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars  
@@ -8,21 +8,21 @@
 
 ## 1. Executive Summary
 
-**Dark Aero v3.0** is a full-stack geospatial decision-support and planetary engineering simulation platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
+**Dark Aero v4.0** is a single-viewport aerospace decision-support and planetary engineering platform designed to identify, benchmark, and field-plan terrestrial analog locations for permanent Moon base locations (Artemis Lunar South Pole craters and volcanic plateaus) and Mars human exploration zones (Jezero Crater, Arcadia Planitia, and Valles Marineris).
 
-### Complete Mission Control v3.0 Capabilities:
-1. **Interactive 3D Planetary Target Globe:** Real-time HTML5 Canvas 3D orbital globe for the Moon and Mars with drag-to-rotate controls, surface gravity/irradiance telemetry, and active landing-site beacons.
-2. **Keyless High-Resolution Satellite Map & Live NASA POWER API Scanner:** Combines **Esri World Imagery**, **NASA Worldview GIBS** (`MODIS Terra True Color`, `Blue Marble Next Generation`, and `Land Surface Temperature`), and **OpenTopoMap** contours. Clicking anywhere on Earth queries the live **NASA Langley POWER Climatology REST API** for real-time surface temperature, precipitation, and solar flux.
-3. **Rover & EVA Traverse Path Planner:** Toggle **Plot Rover Traverse** mode on the satellite map to place waypoints, calculate Haversine route distance ($\text{km}$), estimate rover battery draw ($\text{Wh}$), and evaluate slope hazards.
-4. **Head-to-Head A/B Earth Analog Comparator:** Overlays two terrestrial analog candidates against the selected extraterrestrial base on a 3-dataset radar plot with a parameter-by-parameter winner breakdown.
-5. **24-Hour Diurnal Thermal Cycle Chart:** Plots local solar day/night Kelvin temperature swings comparing **NASA LRO Diviner / Mars MEDA** profiles against terrestrial **MODIS LST** data.
-6. **Interactive CSA RADARSAT SAR Polarimetry Lab & Hardware Stress Simulator:** Calibrates C-band $HH/HV$ radar backscatter and incidence angles in the browser and models wheel-slip risk, cryogenic thermal delta ($\Delta T$), power load ($\text{W}$), and abrasive regolith wear across *Artemis LTV Rover*, *xEMU Spacesuit*, *TRIDENT Ice Drill*, and *Kilopower Fission Habitat*.
+### Key Capabilities:
+1. **Fixed Single-Viewport Aerospace Mission Console (`100vh`):** High-density obsidian telemetry interface featuring `Space Grotesk`, `Plus Jakarta Sans`, and `JetBrains Mono` typography with zero outer page scrolling.
+2. **Interactive 3D Planetary Target Globe:** Real-time HTML5 Canvas 3D orbital globe for the Moon and Mars with drag-to-rotate controls, surface gravity/irradiance telemetry, and active landing-site beacons.
+3. **Keyless High-Resolution Satellite Map & Live NASA POWER API Scanner:** Combines **Esri World Imagery**, **NASA Worldview GIBS** (`MODIS Terra True Color`, `Blue Marble Next Generation`, and `Land Surface Temperature`), and **OpenTopoMap** contours. Clicking anywhere on Earth queries the live **NASA Langley POWER Climatology REST API** and persists scanned locations via `localStorage`.
+4. **Rover & EVA Traverse Path Planner:** Toggle **Plot Rover Traverse** mode on the satellite map to place waypoints, calculate Haversine route distance ($\text{km}$), estimate rover battery draw ($\text{Wh}$), and evaluate slope hazards.
+5. **Head-to-Head A/B Comparator, 24-Hour Diurnal Thermal Chart & CSA SAR Polarimetry Lab:** Compare two Earth analog sites side-by-side, inspect 24-hour day/night Kelvin temperature swings, and calibrate C-band $HH/HV$ radar backscatter in real time.
+6. **60-Second Judge Guided Tour:** Built-in interactive walkthrough highlighting every subsystem across the console.
 
 ---
 
 ## 2. Space Agency Datasets & APIs Used
 
-| Space Agency | Dataset / API Portal | Role in Dark Aero v3.0 Architecture |
+| Space Agency | Dataset / API Portal | Role in Dark Aero v4.0 Architecture |
 | :--- | :--- | :--- |
 | **NASA** | **LRO Diviner Lunar Radiometer** | Polar cryogenic surface temperatures (95 K–112 K), diurnal thermal extremes, and silicate mineralogy indices. |
 | **NASA** | **LRO Mini-RF & LOLA** | S/X-band radar Circular Polarization Ratio (CPR) for regolith blockiness and laser altimetry slope gradients. |
@@ -35,32 +35,7 @@
 
 ---
 
-## 3. Repository Structure
-
-```text
-dark-aero-nasa-space-apps-2026/
-├── index.html                        # Main Mission Control v3.0 web application
-├── README.md                         # Project documentation for NASA Space Apps judges
-├── LICENSE                           # MIT Open-Source License
-├── requirements.txt                  # Optional Python dependencies for data pipelines
-├── assets/
-│   ├── css/
-│   │   └── styles.css                # Aerospace glassmorphism HUD stylesheet
-│   └── js/
-│       ├── data.js                   # Pre-compiled multi-agency planetary dataset bundle
-│       ├── sar-lab.js                # Real-time CSA RADARSAT SAR polarimetry & rover slip module
-│       └── app.js                    # 3D Globe, NASA POWER scanner, Rover Traverse, A/B Comparator & Charts
-├── data/
-│   ├── nasa_analog_matches.json      # Structured JSON output generated by the Python matching engine
-│   └── analog_comparison_matrix.csv  # Tabular compatibility matrix (60 target-to-Earth pair evaluations)
-└── scripts/
-    ├── analog_matching_engine.py     # Core Python multi-criteria scoring & dataset export pipeline
-    └── sar_roughness_analyzer.py     # CSA RADARSAT-1 / NASA LRO Mini-RF SAR backscatter & rover slip script
-```
-
----
-
-## 4. Team Dark Aero Roster
+## 3. Team Dark Aero Roster
 
 * **Albert Lawrence B. Robiñol** (`@charmanderthegreat`) — Team Owner / Lead Full-Stack & Systems Architect
 * **Luke Edward Schofield** (`@luke_schofield`) — Software Engineering & Backend Data Lead
